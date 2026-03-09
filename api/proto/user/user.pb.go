@@ -473,10 +473,11 @@ func (x *UserInfoResponse) GetUser() *User {
 type UpdateUserInfoRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
-	Username      string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`   // 想改的用户名
-	Avatar        string                 `protobuf:"bytes,3,opt,name=avatar,proto3" json:"avatar,omitempty"`       // 想改的头像 URL
-	Password      string                 `protobuf:"bytes,4,opt,name=password,proto3" json:"password,omitempty"`   // 想改的新密码
-	Signature     string                 `protobuf:"bytes,5,opt,name=signature,proto3" json:"signature,omitempty"` // 想改的签名
+	Username      string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
+	AvatarData    []byte                 `protobuf:"bytes,3,opt,name=avatar_data,json=avatarData,proto3" json:"avatar_data,omitempty"` // 修改：从 string 改为 bytes，接收图片二进制流
+	Password      string                 `protobuf:"bytes,4,opt,name=password,proto3" json:"password,omitempty"`
+	Signature     string                 `protobuf:"bytes,5,opt,name=signature,proto3" json:"signature,omitempty"`
+	Filename      string                 `protobuf:"bytes,6,opt,name=filename,proto3" json:"filename,omitempty"` // 新增：用于获取文件后缀（如 .jpg, .png）
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -525,11 +526,11 @@ func (x *UpdateUserInfoRequest) GetUsername() string {
 	return ""
 }
 
-func (x *UpdateUserInfoRequest) GetAvatar() string {
+func (x *UpdateUserInfoRequest) GetAvatarData() []byte {
 	if x != nil {
-		return x.Avatar
+		return x.AvatarData
 	}
-	return ""
+	return nil
 }
 
 func (x *UpdateUserInfoRequest) GetPassword() string {
@@ -542,6 +543,13 @@ func (x *UpdateUserInfoRequest) GetPassword() string {
 func (x *UpdateUserInfoRequest) GetSignature() string {
 	if x != nil {
 		return x.Signature
+	}
+	return ""
+}
+
+func (x *UpdateUserInfoRequest) GetFilename() string {
+	if x != nil {
+		return x.Filename
 	}
 	return ""
 }
@@ -640,13 +648,15 @@ const file_api_proto_user_proto_rawDesc = "" +
 	"\n" +
 	"status_msg\x18\x02 \x01(\tR\tstatusMsg\x12\x1e\n" +
 	"\x04user\x18\x03 \x01(\v2\n" +
-	".user.UserR\x04user\"\x9b\x01\n" +
+	".user.UserR\x04user\"\xc0\x01\n" +
 	"\x15UpdateUserInfoRequest\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12\x1a\n" +
-	"\busername\x18\x02 \x01(\tR\busername\x12\x16\n" +
-	"\x06avatar\x18\x03 \x01(\tR\x06avatar\x12\x1a\n" +
+	"\busername\x18\x02 \x01(\tR\busername\x12\x1f\n" +
+	"\vavatar_data\x18\x03 \x01(\fR\n" +
+	"avatarData\x12\x1a\n" +
 	"\bpassword\x18\x04 \x01(\tR\bpassword\x12\x1c\n" +
-	"\tsignature\x18\x05 \x01(\tR\tsignature\"X\n" +
+	"\tsignature\x18\x05 \x01(\tR\tsignature\x12\x1a\n" +
+	"\bfilename\x18\x06 \x01(\tR\bfilename\"X\n" +
 	"\x16UpdateUserInfoResponse\x12\x1f\n" +
 	"\vstatus_code\x18\x01 \x01(\x05R\n" +
 	"statusCode\x12\x1d\n" +

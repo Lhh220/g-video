@@ -106,43 +106,52 @@ func GetUserInfo(c *gin.Context) {
 }
 
 func UpdateUserInfo(c *gin.Context) {
-	// 1. 从 Header 提取 Authorization 字段
+	// 1. 从 Header 提取 Token (保持不变)
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"status_code": 1, "status_msg": "未携带 Token"})
 		return
 	}
-
-	// 2. 检查并去掉 "Bearer " 前缀
-	// 标准格式是: Authorization: Bearer <token>
 	parts := strings.SplitN(authHeader, " ", 2)
 	if !(len(parts) == 2 && parts[0] == "Bearer") {
 		c.JSON(http.StatusUnauthorized, gin.H{"status_code": 1, "status_msg": "Token 格式错误"})
 		return
 	}
-	token := parts[1] // 提取出真正的 Token 字符串
+	token := parts[1]
 
-	// 3. 定义请求 Body (此时 Body 里不再包含 Token)
-	type UpdateReq struct {
-		Username  string `json:"username"`
-		Password  string `json:"password"`
-		Avatar    string `json:"avatar"`
-		Signature string `json:"signature"`
+	// 2. 获取表单中的文本字段 (使用 PostForm 代替 JSON 绑定)
+	username := c.PostForm("username")
+	password := c.PostForm("password")
+	signature := c.PostForm("signature")
+
+	// 3. 获取头像文件流
+	var avatarData []byte
+	var fileName string
+
+	// "avatar" 是前端在 Form-data 中对应的 Key
+	_, header, err := c.Request.FormFile("avatar")
+	if err == nil {
+		// 读取文件内容到字节数组
+		fileObj, _ := header.Open()
+		defer fileObj.Close()
+
+		avatarData = make([]byte, header.Size)
+		_, err = fileObj.Read(avatarData)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status_code": 1, "status_msg": "读取文件失败"})
+			return
+		}
+		fileName = header.Filename // 获取原始文件名供 Logic 层使用
 	}
 
-	var reqData UpdateReq
-	if err := c.ShouldBindJSON(&reqData); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"status_code": 1, "status_msg": "参数格式错误"})
-		return
-	}
-
-	// 4. 调用 RPC (注意：Logic 层的 Proto 依然需要这个 Token 字段作为参数)
+	// 4. 调用 RPC
 	resp, err := rpc_client.UserClient.UpdateUserInfo(c, &user.UpdateUserInfoRequest{
-		Token:     token, // 依然传给 Logic 层进行解析
-		Username:  reqData.Username,
-		Password:  reqData.Password,
-		Avatar:    reqData.Avatar,
-		Signature: reqData.Signature,
+		Token:      token,
+		Username:   username,
+		Password:   password,
+		Signature:  signature,
+		AvatarData: avatarData, // 传给 Logic 层的 bytes
+		Filename:   fileName,   // 传给 Logic 层用于拼接 OSS 路径
 	})
 
 	if err != nil {

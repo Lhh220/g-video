@@ -65,10 +65,11 @@ service UserService {
 // 更新用户信息请求
 message UpdateUserInfoRequest {
     string token = 1;
-    string username = 2;    // 想改的用户名
-    string avatar = 3;      // 想改的头像 URL
-    string password = 4;    // 想改的新密码
-    string signature = 5;   // 想改的签名
+    string username = 2;    
+    bytes  avatar_data = 3;  // 修改：从 string 改为 bytes，接收图片二进制流
+    string password = 4;    
+    string signature = 5;   
+    string filename = 6;    // 新增：用于获取文件后缀（如 .jpg, .png）
 }
 
 message UpdateUserInfoResponse {

@@ -1,11 +1,15 @@
 package service
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/Lhh220/g-video/api/proto/user" // 确保你的pb路径正确
 	"github.com/Lhh220/g-video/logic-server/internal/model"
 	"github.com/Lhh220/g-video/logic-server/pkg/database"
+	"github.com/Lhh220/g-video/logic-server/pkg/oss"
 	"github.com/Lhh220/g-video/logic-server/pkg/utils"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -132,8 +136,25 @@ func (s *UserService) UpdateUserInfo(ctx context.Context, req *user.UpdateUserIn
 		updateMap["username"] = req.Username
 	}
 
-	if req.Avatar != "" {
-		updateMap["avatar"] = req.Avatar
+	if len(req.AvatarData) > 0 {
+		// 构造唯一的文件名，防止多人上传同名文件冲突
+		// 格式：avatar/时间戳_文件名.jpg
+		objectName := fmt.Sprintf("avatar/%d_%s", time.Now().Unix(), req.Filename)
+
+		// 【核心改动】：使用 bytes.NewReader 将 []byte 包装成 io.Reader
+		reader := bytes.NewReader(req.AvatarData)
+
+		// 调用你现有的 OSS 工具类
+		avatarUrl, err := oss.UploadFile(objectName, reader)
+		if err != nil {
+			return &user.UpdateUserInfoResponse{
+				StatusCode: 1,
+				StatusMsg:  "上传OSS失败: " + err.Error(),
+			}, nil
+		}
+
+		// 将生成的 URL 存入数据库更新 Map
+		updateMap["avatar"] = avatarUrl
 	}
 
 	if req.Signature != "" {
