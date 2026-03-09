@@ -58,4 +58,20 @@ service UserService {
     rpc Register(RegisterRequest) returns (RegisterResponse);
     rpc Login(LoginRequest) returns (LoginResponse);
     rpc GetUserInfo(UserInfoRequest) returns (UserInfoResponse);
+        // 新增这一行
+    rpc UpdateUserInfo(UpdateUserInfoRequest) returns (UpdateUserInfoResponse);
+}
+
+// 更新用户信息请求
+message UpdateUserInfoRequest {
+    string token = 1;
+    string username = 2;    // 想改的用户名
+    string avatar = 3;      // 想改的头像 URL
+    string password = 4;    // 想改的新密码
+    string signature = 5;   // 想改的签名
+}
+
+message UpdateUserInfoResponse {
+    int32 status_code = 1;
+    string status_msg = 2;
 }

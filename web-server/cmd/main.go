@@ -33,6 +33,7 @@ func main() {
 		apiV1.POST("/user/register", handler.Register)
 		apiV1.POST("/user/login", handler.Login)
 		apiV1.GET("/user/info", handler.GetUserInfo)
+		apiV1.POST("/user/update", handler.UpdateUserInfo)
 	}
 
 	r.Run(":8080")

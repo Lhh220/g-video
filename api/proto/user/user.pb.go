@@ -469,6 +469,135 @@ func (x *UserInfoResponse) GetUser() *User {
 	return nil
 }
 
+// 更新用户信息请求
+type UpdateUserInfoRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	Username      string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`   // 想改的用户名
+	Avatar        string                 `protobuf:"bytes,3,opt,name=avatar,proto3" json:"avatar,omitempty"`       // 想改的头像 URL
+	Password      string                 `protobuf:"bytes,4,opt,name=password,proto3" json:"password,omitempty"`   // 想改的新密码
+	Signature     string                 `protobuf:"bytes,5,opt,name=signature,proto3" json:"signature,omitempty"` // 想改的签名
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateUserInfoRequest) Reset() {
+	*x = UpdateUserInfoRequest{}
+	mi := &file_api_proto_user_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateUserInfoRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateUserInfoRequest) ProtoMessage() {}
+
+func (x *UpdateUserInfoRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_user_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateUserInfoRequest.ProtoReflect.Descriptor instead.
+func (*UpdateUserInfoRequest) Descriptor() ([]byte, []int) {
+	return file_api_proto_user_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *UpdateUserInfoRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *UpdateUserInfoRequest) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *UpdateUserInfoRequest) GetAvatar() string {
+	if x != nil {
+		return x.Avatar
+	}
+	return ""
+}
+
+func (x *UpdateUserInfoRequest) GetPassword() string {
+	if x != nil {
+		return x.Password
+	}
+	return ""
+}
+
+func (x *UpdateUserInfoRequest) GetSignature() string {
+	if x != nil {
+		return x.Signature
+	}
+	return ""
+}
+
+type UpdateUserInfoResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	StatusCode    int32                  `protobuf:"varint,1,opt,name=status_code,json=statusCode,proto3" json:"status_code,omitempty"`
+	StatusMsg     string                 `protobuf:"bytes,2,opt,name=status_msg,json=statusMsg,proto3" json:"status_msg,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateUserInfoResponse) Reset() {
+	*x = UpdateUserInfoResponse{}
+	mi := &file_api_proto_user_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateUserInfoResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateUserInfoResponse) ProtoMessage() {}
+
+func (x *UpdateUserInfoResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_user_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateUserInfoResponse.ProtoReflect.Descriptor instead.
+func (*UpdateUserInfoResponse) Descriptor() ([]byte, []int) {
+	return file_api_proto_user_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *UpdateUserInfoResponse) GetStatusCode() int32 {
+	if x != nil {
+		return x.StatusCode
+	}
+	return 0
+}
+
+func (x *UpdateUserInfoResponse) GetStatusMsg() string {
+	if x != nil {
+		return x.StatusMsg
+	}
+	return ""
+}
+
 var File_api_proto_user_proto protoreflect.FileDescriptor
 
 const file_api_proto_user_proto_rawDesc = "" +
@@ -511,11 +640,23 @@ const file_api_proto_user_proto_rawDesc = "" +
 	"\n" +
 	"status_msg\x18\x02 \x01(\tR\tstatusMsg\x12\x1e\n" +
 	"\x04user\x18\x03 \x01(\v2\n" +
-	".user.UserR\x04user2\xb8\x01\n" +
+	".user.UserR\x04user\"\x9b\x01\n" +
+	"\x15UpdateUserInfoRequest\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\x12\x1a\n" +
+	"\busername\x18\x02 \x01(\tR\busername\x12\x16\n" +
+	"\x06avatar\x18\x03 \x01(\tR\x06avatar\x12\x1a\n" +
+	"\bpassword\x18\x04 \x01(\tR\bpassword\x12\x1c\n" +
+	"\tsignature\x18\x05 \x01(\tR\tsignature\"X\n" +
+	"\x16UpdateUserInfoResponse\x12\x1f\n" +
+	"\vstatus_code\x18\x01 \x01(\x05R\n" +
+	"statusCode\x12\x1d\n" +
+	"\n" +
+	"status_msg\x18\x02 \x01(\tR\tstatusMsg2\x85\x02\n" +
 	"\vUserService\x129\n" +
 	"\bRegister\x12\x15.user.RegisterRequest\x1a\x16.user.RegisterResponse\x120\n" +
 	"\x05Login\x12\x12.user.LoginRequest\x1a\x13.user.LoginResponse\x12<\n" +
-	"\vGetUserInfo\x12\x15.user.UserInfoRequest\x1a\x16.user.UserInfoResponseB\bZ\x06./userb\x06proto3"
+	"\vGetUserInfo\x12\x15.user.UserInfoRequest\x1a\x16.user.UserInfoResponse\x12K\n" +
+	"\x0eUpdateUserInfo\x12\x1b.user.UpdateUserInfoRequest\x1a\x1c.user.UpdateUserInfoResponseB\bZ\x06./userb\x06proto3"
 
 var (
 	file_api_proto_user_proto_rawDescOnce sync.Once
@@ -529,26 +670,30 @@ func file_api_proto_user_proto_rawDescGZIP() []byte {
 	return file_api_proto_user_proto_rawDescData
 }
 
-var file_api_proto_user_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_api_proto_user_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_api_proto_user_proto_goTypes = []any{
-	(*User)(nil),             // 0: user.User
-	(*RegisterRequest)(nil),  // 1: user.RegisterRequest
-	(*RegisterResponse)(nil), // 2: user.RegisterResponse
-	(*LoginRequest)(nil),     // 3: user.LoginRequest
-	(*LoginResponse)(nil),    // 4: user.LoginResponse
-	(*UserInfoRequest)(nil),  // 5: user.UserInfoRequest
-	(*UserInfoResponse)(nil), // 6: user.UserInfoResponse
+	(*User)(nil),                   // 0: user.User
+	(*RegisterRequest)(nil),        // 1: user.RegisterRequest
+	(*RegisterResponse)(nil),       // 2: user.RegisterResponse
+	(*LoginRequest)(nil),           // 3: user.LoginRequest
+	(*LoginResponse)(nil),          // 4: user.LoginResponse
+	(*UserInfoRequest)(nil),        // 5: user.UserInfoRequest
+	(*UserInfoResponse)(nil),       // 6: user.UserInfoResponse
+	(*UpdateUserInfoRequest)(nil),  // 7: user.UpdateUserInfoRequest
+	(*UpdateUserInfoResponse)(nil), // 8: user.UpdateUserInfoResponse
 }
 var file_api_proto_user_proto_depIdxs = []int32{
 	0, // 0: user.UserInfoResponse.user:type_name -> user.User
 	1, // 1: user.UserService.Register:input_type -> user.RegisterRequest
 	3, // 2: user.UserService.Login:input_type -> user.LoginRequest
 	5, // 3: user.UserService.GetUserInfo:input_type -> user.UserInfoRequest
-	2, // 4: user.UserService.Register:output_type -> user.RegisterResponse
-	4, // 5: user.UserService.Login:output_type -> user.LoginResponse
-	6, // 6: user.UserService.GetUserInfo:output_type -> user.UserInfoResponse
-	4, // [4:7] is the sub-list for method output_type
-	1, // [1:4] is the sub-list for method input_type
+	7, // 4: user.UserService.UpdateUserInfo:input_type -> user.UpdateUserInfoRequest
+	2, // 5: user.UserService.Register:output_type -> user.RegisterResponse
+	4, // 6: user.UserService.Login:output_type -> user.LoginResponse
+	6, // 7: user.UserService.GetUserInfo:output_type -> user.UserInfoResponse
+	8, // 8: user.UserService.UpdateUserInfo:output_type -> user.UpdateUserInfoResponse
+	5, // [5:9] is the sub-list for method output_type
+	1, // [1:5] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
 	1, // [1:1] is the sub-list for extension extendee
 	0, // [0:1] is the sub-list for field type_name
@@ -565,7 +710,7 @@ func file_api_proto_user_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_proto_user_proto_rawDesc), len(file_api_proto_user_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

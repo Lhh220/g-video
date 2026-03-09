@@ -117,3 +117,51 @@ func (s *UserService) GetUserInfo(ctx context.Context, req *user.UserInfoRequest
 		},
 	}, nil
 }
+
+func (s *UserService) UpdateUserInfo(ctx context.Context, req *user.UpdateUserInfoRequest) (*user.UpdateUserInfoResponse, error) {
+	// 1. 鉴权：解析 Token 拿到当前用户的 ID
+	claims, err := utils.ParseToken(req.Token)
+	if err != nil {
+		return &user.UpdateUserInfoResponse{StatusCode: 1, StatusMsg: "登录已失效"}, nil
+	}
+
+	// 2. 使用 Map 构造更新数据（最灵活，避开 GORM 零值坑）
+	updateMap := make(map[string]interface{})
+
+	if req.Username != "" {
+		updateMap["username"] = req.Username
+	}
+
+	if req.Avatar != "" {
+		updateMap["avatar"] = req.Avatar
+	}
+
+	if req.Signature != "" {
+		updateMap["signature"] = req.Signature
+	}
+
+	// 3. 特殊处理密码：必须加密！
+	if req.Password != "" {
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+		if err != nil {
+			return &user.UpdateUserInfoResponse{StatusCode: 1, StatusMsg: "密码处理失败"}, nil
+		}
+		updateMap["password"] = string(hashedPassword)
+	}
+
+	// 4. 检查是否有实际改动
+	if len(updateMap) == 0 {
+		return &user.UpdateUserInfoResponse{StatusCode: 0, StatusMsg: "未提交任何修改内容"}, nil
+	}
+
+	// 5. 执行更新：根据 Token 里的 claims.UserID 定位用户
+	err = database.DB.Model(&model.User{}).Where("id = ?", claims.UserID).Updates(updateMap).Error
+	if err != nil {
+		return &user.UpdateUserInfoResponse{StatusCode: 1, StatusMsg: "数据库更新失败"}, nil
+	}
+
+	return &user.UpdateUserInfoResponse{
+		StatusCode: 0,
+		StatusMsg:  "修改成功",
+	}, nil
+}

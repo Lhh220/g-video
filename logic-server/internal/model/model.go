@@ -16,6 +16,7 @@ type User struct {
 	CreatedAt time.Time      `gorm:"column:created_at"`
 	UpdatedAt time.Time      `gorm:"column:updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index"` // 软删除支持
+	Signature string         `gorm:"column:signature;size:255;default:''"`
 
 	// 关联字段：一个用户可以拥有多个视频
 	Videos []Video `gorm:"foreignKey:AuthorID"`
