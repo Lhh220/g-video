@@ -32,6 +32,7 @@ func main() {
 	{
 		apiV1.POST("/user/register", handler.Register)
 		apiV1.POST("/user/login", handler.Login)
+		apiV1.GET("/user/info", handler.GetUserInfo)
 	}
 
 	r.Run(":8080")

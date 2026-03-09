@@ -80,3 +80,40 @@ func (s *UserService) Login(ctx context.Context, req *user.LoginRequest) (*user.
 		Token:      token, // 只有登录才返回 Token
 	}, nil
 }
+
+func (s *UserService) GetUserInfo(ctx context.Context, req *user.UserInfoRequest) (*user.UserInfoResponse, error) {
+	// 1. 鉴权：解析 Token
+	// 虽然是看别人的信息，但通常系统要求必须是登录用户才能查看
+	_, err := utils.ParseToken(req.Token)
+	if err != nil {
+		return &user.UserInfoResponse{
+			StatusCode: 1,
+			StatusMsg:  "Token 已过期或无效，请重新登录",
+		}, nil
+	}
+
+	// 2. 查询数据库
+	var u model.User
+	// 根据请求中的 user_id 查找
+	if err := database.DB.First(&u, req.UserId).Error; err != nil {
+		return &user.UserInfoResponse{
+			StatusCode: 1,
+			StatusMsg:  "该用户不存在",
+		}, nil
+	}
+
+	// 3. 组装返回结果
+	// 注意：这里的 user.User 是你 proto 生成的结构体，不是 model.User
+	return &user.UserInfoResponse{
+		StatusCode: 0,
+		StatusMsg:  "查询成功",
+		User: &user.User{
+			Id:       u.ID,
+			Username: u.Username,
+			Avatar:   u.Avatar,
+			// 关注数和粉丝数目前没做逻辑，先预留 0
+			FollowCount:   0,
+			FollowerCount: 0,
+		},
+	}, nil
+}

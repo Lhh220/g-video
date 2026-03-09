@@ -44,6 +44,7 @@ message LoginResponse {
 // 获取用户信息
 message UserInfoRequest {
     int64 user_id = 1;
+    string token = 2;
 }
 
 message UserInfoResponse {

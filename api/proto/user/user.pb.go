@@ -360,6 +360,7 @@ func (x *LoginResponse) GetToken() string {
 type UserInfoRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Token         string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -399,6 +400,13 @@ func (x *UserInfoRequest) GetUserId() int64 {
 		return x.UserId
 	}
 	return 0
+}
+
+func (x *UserInfoRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
 }
 
 type UserInfoResponse struct {
@@ -493,9 +501,10 @@ const file_api_proto_user_proto_rawDesc = "" +
 	"\n" +
 	"status_msg\x18\x02 \x01(\tR\tstatusMsg\x12\x17\n" +
 	"\auser_id\x18\x03 \x01(\x03R\x06userId\x12\x14\n" +
-	"\x05token\x18\x04 \x01(\tR\x05token\"*\n" +
+	"\x05token\x18\x04 \x01(\tR\x05token\"@\n" +
 	"\x0fUserInfoRequest\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\x03R\x06userId\"r\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x14\n" +
+	"\x05token\x18\x02 \x01(\tR\x05token\"r\n" +
 	"\x10UserInfoResponse\x12\x1f\n" +
 	"\vstatus_code\x18\x01 \x01(\x05R\n" +
 	"statusCode\x12\x1d\n" +
