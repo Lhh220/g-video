@@ -41,3 +41,24 @@ func Register(c *gin.Context) {
 
 	c.JSON(http.StatusOK, resp)
 }
+
+func Login(c *gin.Context) {
+	var reqData RegisterRequest
+	if err := c.ShouldBindJSON(&reqData); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status_msg": "参数格式错误"})
+		return
+	}
+
+	// 调用 RPC 的 Login 接口
+	resp, err := rpc_client.UserClient.Login(c, &user.LoginRequest{
+		Username: reqData.Username,
+		Password: reqData.Password,
+	})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status_msg": "RPC服务不可用"})
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}

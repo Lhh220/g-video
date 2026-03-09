@@ -6,6 +6,7 @@ import (
 	"github.com/Lhh220/g-video/api/proto/user" // 确保你的pb路径正确
 	"github.com/Lhh220/g-video/logic-server/internal/model"
 	"github.com/Lhh220/g-video/logic-server/pkg/database"
+	"github.com/Lhh220/g-video/logic-server/pkg/utils"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -41,5 +42,41 @@ func (s *UserService) Register(ctx context.Context, req *user.RegisterRequest) (
 		StatusCode: 0,
 		StatusMsg:  "注册成功",
 		UserId:     newUser.ID,
+	}, nil
+}
+
+func (s *UserService) Login(ctx context.Context, req *user.LoginRequest) (*user.LoginResponse, error) {
+	// 1. 参数校验
+	if req.Username == "" || req.Password == "" {
+		return &user.LoginResponse{StatusCode: 1, StatusMsg: "用户名或密码为空"}, nil
+	}
+
+	// 2. 根据用户名查询用户信息
+	var u model.User
+	err := database.DB.Where("username = ?", req.Username).First(&u).Error
+	if err != nil {
+		// 如果找不到记录
+		return &user.LoginResponse{StatusCode: 1, StatusMsg: "用户不存在"}, nil
+	}
+
+	// 3. 比对密码
+	// bcrypt.CompareHashAndPassword(数据库里的密文, 用户输入的明文)
+	err = bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(req.Password))
+	if err != nil {
+		return &user.LoginResponse{StatusCode: 1, StatusMsg: "密码错误"}, nil
+	}
+
+	// 4. 验证通过，颁发 Token (身份证)
+	token, err := utils.GenerateToken(u.ID, u.Role)
+	if err != nil {
+		return &user.LoginResponse{StatusCode: 500, StatusMsg: "生成Token失败"}, nil
+	}
+
+	// 5. 返回结果
+	return &user.LoginResponse{
+		StatusCode: 0,
+		StatusMsg:  "登录成功",
+		UserId:     u.ID,
+		Token:      token, // 只有登录才返回 Token
 	}, nil
 }

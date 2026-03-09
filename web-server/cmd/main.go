@@ -28,7 +28,11 @@ func main() {
 	r := gin.Default()
 
 	// 路由定义
-	r.POST("/api/v1/user/register/", handler.Register)
+	apiV1 := r.Group("/api/v1")
+	{
+		apiV1.POST("/user/register", handler.Register)
+		apiV1.POST("/user/login", handler.Login)
+	}
 
 	r.Run(":8080")
 }
