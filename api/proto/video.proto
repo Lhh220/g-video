@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package video;
+option go_package = "./video";
+
+// --- 基础消息 ---
+message Video {
+    int64 id = 1;
+    int64 author_id = 2;
+    string title = 3;
+    string play_url = 4;
+    string cover_url = 5;
+    int64 favorite_count = 6;
+    int64 comment_count = 7;
+    bool is_favorite = 8; // 当前登录用户是否点赞
+    int32 status = 9;     // 0-待审, 1-发布, 2-驳回
+}
+
+// --- 请求与响应 ---
+
+// 投稿请求 (Web-server处理文件分片后传给Logic)
+message PublishRequest {
+    int64 user_id = 1;
+    string title = 2;
+    bytes data = 3; // 视频二进制数据
+}
+
+message PublishResponse {
+    int32 status_code = 1;
+    string status_msg = 2;
+}
+
+// 获取视频流 (Feed)
+message FeedRequest {
+    int64 latest_time = 1; // 限制返回视频的最新投稿时间戳
+    string token = 2;      // 可选，用于判断用户是否点赞过
+}
+
+message FeedResponse {
+    int32 status_code = 1;
+    string status_msg = 2;
+    repeated Video video_list = 3;
+    int64 next_time = 4;   // 翻页用的时间戳
+}
+
+// 物理删除请求
+message DeleteRequest {
+    int64 user_id = 1;
+    int64 video_id = 2;
+}
+
+message DeleteResponse {
+    int32 status_code = 1;
+    string status_msg = 2;
+}
+
+// 管理员审核
+message AuditRequest {
+    int64 admin_id = 1;
+    int64 video_id = 2;
+    int32 action = 3; // 1-通过, 2-驳回
+    string reason = 4;
+}
+
+message AuditResponse {
+    int32 status_code = 1;
+    string status_msg = 2;
+}
+
+// --- 服务定义 ---
+service VideoService {
+    rpc Feed(FeedRequest) returns (FeedResponse);
+    rpc PublishVideo(PublishRequest) returns (PublishResponse);
+    rpc DeleteVideo(DeleteRequest) returns (DeleteResponse);
+    rpc AuditVideo(AuditRequest) returns (AuditResponse);
+}

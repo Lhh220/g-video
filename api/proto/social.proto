@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package social;
+option go_package = "./social";
+
+// --- 请求与响应 ---
+
+// 点赞操作
+message FavoriteRequest {
+    int64 user_id = 1;
+    int64 video_id = 2;
+    int32 action_type = 3; // 1-点赞, 2-取消点赞
+}
+
+message FavoriteResponse {
+    int32 status_code = 1;
+    string status_msg = 2;
+}
+
+// 关注操作
+message RelationRequest {
+    int64 user_id = 1;
+    int64 to_user_id = 2;
+    int32 action_type = 3; // 1-关注, 2-取关
+}
+
+message RelationResponse {
+    int32 status_code = 1;
+    string status_msg = 2;
+}
+
+// 发布评论
+message CommentRequest {
+    int64 user_id = 1;
+    int64 video_id = 2;
+    int32 action_type = 3; // 1-发布, 2-删除
+    string comment_text = 4;
+    int64 comment_id = 5;  // 仅删除时需要
+}
+
+message CommentResponse {
+    int32 status_code = 1;
+    string status_msg = 2;
+}
+
+// --- 服务定义 ---
+service SocialService {
+    rpc FavoriteAction(FavoriteRequest) returns (FavoriteResponse);
+    rpc RelationAction(RelationRequest) returns (RelationResponse);
+    rpc CommentAction(CommentRequest) returns (CommentResponse);
+}

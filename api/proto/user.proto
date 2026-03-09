@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package user;
+option go_package = "./user";
+
+// --- 基础消息 ---
+message User {
+    int64 id = 1;
+    string username = 2;
+    string avatar = 3;
+    int32 role = 4; // 0-用户, 1-管理员
+}
+
+// --- 请求与响应 ---
+
+// 注册与登录请求
+message UserActionRequest {
+    string username = 1;
+    string password = 2;
+}
+
+message UserActionResponse {
+    int32 status_code = 1;
+    string status_msg = 2;
+    int64 user_id = 3;
+    string token = 4; // 注册/登录成功后直接返回生成的JWT
+}
+
+// 获取用户信息
+message UserInfoRequest {
+    int64 user_id = 1;
+    string token = 2;
+}
+
+message UserInfoResponse {
+    int32 status_code = 1;
+    string status_msg = 2;
+    User user = 3;
+}
+
+// --- 服务定义 ---
+service UserService {
+    rpc Register(UserActionRequest) returns (UserActionResponse);
+    rpc Login(UserActionRequest) returns (UserActionResponse);
+    rpc GetUserInfo(UserInfoRequest) returns (UserInfoResponse);
+}
