@@ -9,27 +9,41 @@ message User {
     string username = 2;
     string avatar = 3;
     int32 role = 4; // 0-用户, 1-管理员
+    int64 follower_count = 5;
+    int64 follow_count = 6;
 }
 
 // --- 请求与响应 ---
 
-// 注册与登录请求
-message UserActionRequest {
+// 注册请求
+message RegisterRequest {
+    string username = 1;
+    string password = 2;
+    int32 role = 3; // 新增：0-用户, 1-管理员
+}
+message RegisterResponse {
+    int32 status_code = 1;
+    string status_msg = 2;
+    int64 user_id = 3;
+    string token = 4;
+}
+
+// 登录请求
+message LoginRequest {
     string username = 1;
     string password = 2;
 }
 
-message UserActionResponse {
+message LoginResponse {
     int32 status_code = 1;
     string status_msg = 2;
     int64 user_id = 3;
-    string token = 4; // 注册/登录成功后直接返回生成的JWT
+    string token = 4;
 }
 
 // 获取用户信息
 message UserInfoRequest {
     int64 user_id = 1;
-    string token = 2;
 }
 
 message UserInfoResponse {
@@ -40,7 +54,7 @@ message UserInfoResponse {
 
 // --- 服务定义 ---
 service UserService {
-    rpc Register(UserActionRequest) returns (UserActionResponse);
-    rpc Login(UserActionRequest) returns (UserActionResponse);
+    rpc Register(RegisterRequest) returns (RegisterResponse);
+    rpc Login(LoginRequest) returns (LoginResponse);
     rpc GetUserInfo(UserInfoRequest) returns (UserInfoResponse);
 }

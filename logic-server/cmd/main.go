@@ -2,11 +2,15 @@ package main
 
 import (
 	"fmt"
+	"net"
 
+	"github.com/Lhh220/g-video/api/proto/user"
 	"github.com/Lhh220/g-video/logic-server/internal/config"
+	"github.com/Lhh220/g-video/logic-server/internal/service"
 	"github.com/Lhh220/g-video/logic-server/pkg/database"
 	"github.com/Lhh220/g-video/logic-server/pkg/oss"
 	"github.com/Lhh220/g-video/logic-server/pkg/redis"
+	"google.golang.org/grpc"
 )
 
 func main() {
@@ -21,4 +25,21 @@ func main() {
 	redis.InitRedis() // 新增这一行
 
 	fmt.Println("Logic-Server 基础设施启动成功！")
+	lis, err := net.Listen("tcp", ":50051")
+	if err != nil {
+		panic(fmt.Sprintf("监听端口失败: %v", err))
+	}
+
+	// 3. 创建 gRPC Server 实例
+	s := grpc.NewServer()
+
+	// 4. 注册服务：把你的逻辑关联到 Server 上
+	// 这里的 &service.UserService{} 就是你写的处理注册登录的代码
+	user.RegisterUserServiceServer(s, &service.UserService{})
+
+	// 5. 启动！这里会阻塞，不会退出
+	fmt.Println("🚀 Logic-Server 正在端口 :50051 持续监听中...")
+	if err := s.Serve(lis); err != nil {
+		panic(fmt.Sprintf("启动服务失败: %v", err))
+	}
 }
