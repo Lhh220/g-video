@@ -6,7 +6,6 @@ import (
 	"github.com/Lhh220/g-video/api/proto/user" // 确保你的pb路径正确
 	"github.com/Lhh220/g-video/logic-server/internal/model"
 	"github.com/Lhh220/g-video/logic-server/pkg/database"
-	"github.com/Lhh220/g-video/logic-server/pkg/utils"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -38,18 +37,9 @@ func (s *UserService) Register(ctx context.Context, req *user.RegisterRequest) (
 		return &user.RegisterResponse{StatusCode: 500, StatusMsg: "注册失败"}, nil
 	}
 
-	token, err := utils.GenerateToken(newUser.ID, newUser.Role)
-	if err != nil {
-		return &user.RegisterResponse{
-			StatusCode: 500,
-			StatusMsg:  "Token 生成失败",
-		}, nil
-	}
-
 	return &user.RegisterResponse{
 		StatusCode: 0,
 		StatusMsg:  "注册成功",
 		UserId:     newUser.ID,
-		Token:      token,
 	}, nil
 }
