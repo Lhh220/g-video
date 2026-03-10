@@ -43,6 +43,10 @@ func main() {
 			videoV1.GET("/feed", handler.GetFeed)
 			videoV1.GET("/publish/list", handler.GetPublishList)
 		}
+
+		apiV1.POST("/favorite/action", handler.FavoriteAction)
+		apiV1.POST("/relation/action", handler.RelationAction)
+
 	}
 
 	r.Run(":8080")

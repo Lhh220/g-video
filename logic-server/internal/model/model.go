@@ -8,15 +8,17 @@ import (
 
 // User 用户表
 type User struct {
-	ID        int64          `gorm:"primaryKey;column:id"`
-	Username  string         `gorm:"unique;not null;column:username;size:64"`
-	Password  string         `gorm:"not null;column:password;size:255"`
-	Avatar    string         `gorm:"column:avatar;size:255;default:''"`
-	Role      int32          `gorm:"column:role;default:0"` // 0-用户, 1-管理员
-	CreatedAt time.Time      `gorm:"column:created_at"`
-	UpdatedAt time.Time      `gorm:"column:updated_at"`
-	DeletedAt gorm.DeletedAt `gorm:"index"` // 软删除支持
-	Signature string         `gorm:"column:signature;size:255;default:''"`
+	ID            int64          `gorm:"primaryKey;column:id"`
+	Username      string         `gorm:"unique;not null;column:username;size:64"`
+	Password      string         `gorm:"not null;column:password;size:255"`
+	Avatar        string         `gorm:"column:avatar;size:255;default:''"`
+	Role          int32          `gorm:"column:role;default:0"` // 0-用户, 1-管理员
+	CreatedAt     time.Time      `gorm:"column:created_at"`
+	UpdatedAt     time.Time      `gorm:"column:updated_at"`
+	DeletedAt     gorm.DeletedAt `gorm:"index"` // 软删除支持
+	Signature     string         `gorm:"column:signature;size:255;default:''"`
+	FollowCount   int64          `gorm:"column:follow_count;default:0"`
+	FollowerCount int64          `gorm:"column:follower_count;default:0"`
 
 	// 关联字段：一个用户可以拥有多个视频
 	Videos []Video `gorm:"foreignKey:AuthorID"`

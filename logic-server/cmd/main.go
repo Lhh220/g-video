@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/Lhh220/g-video/api/proto/social"
 	"github.com/Lhh220/g-video/api/proto/user"
 	"github.com/Lhh220/g-video/api/proto/video"
 	"github.com/Lhh220/g-video/logic-server/internal/config"
@@ -41,6 +42,8 @@ func main() {
 	user.RegisterUserServiceServer(s, &service.UserService{})
 	// 注册视频服务
 	video.RegisterVideoServiceServer(s, &service.VideoService{})
+	// 注册社交服务
+	social.RegisterSocialServiceServer(s, &service.SocialService{})
 
 	// 5. 启动！这里会阻塞，不会退出
 	fmt.Println("🚀 Logic-Server 正在端口 :50051 持续监听中...")
