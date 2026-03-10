@@ -122,7 +122,7 @@ func (s *SocialService) CommentAction(ctx context.Context, req *social.CommentRe
 				UpdateColumn("comment_count", gorm.Expr("comment_count + ?", 1)).Error
 
 		} else if req.ActionType == 2 { // 2-删除
-			// 安全删除：必须匹配 ID 且是本人发的
+			// 1. 安全删除评论
 			result := tx.Where("id = ? AND user_id = ?", req.CommentId, req.UserId).Delete(&model.Comment{})
 			if result.Error != nil {
 				return result.Error
@@ -130,9 +130,11 @@ func (s *SocialService) CommentAction(ctx context.Context, req *social.CommentRe
 			if result.RowsAffected == 0 {
 				return fmt.Errorf("评论不存在或无权删除")
 			}
-			// 视频评论数 -1
+
+			// 2. 视频评论数 -1 (使用 GREATEST 避免出现 -1)
+			// 这样即便原本是 0，减 1 后也会取 0 和 -1 之间的最大值，即 0
 			return tx.Model(&model.Video{}).Where("id = ?", req.VideoId).
-				UpdateColumn("comment_count", gorm.Expr("comment_count - ?", 1)).Error
+				UpdateColumn("comment_count", gorm.Expr("GREATEST(comment_count - 1, 0)")).Error
 		}
 		return fmt.Errorf("未定义的动作类型")
 	})

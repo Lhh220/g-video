@@ -47,6 +47,7 @@ func main() {
 		apiV1.POST("/favorite/action", handler.FavoriteAction)
 		apiV1.POST("/relation/action", handler.RelationAction)
 		apiV1.POST("/comment/action", handler.CommentAction)
+		apiV1.POST("/admin/audit", handler.AuditVideo)
 
 	}
 

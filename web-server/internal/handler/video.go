@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 
 	"github.com/Lhh220/g-video/api/proto/video" // 替换为你生成的 video 代码路径
 	"github.com/Lhh220/g-video/logic-server/pkg/utils"
@@ -136,5 +137,57 @@ func GetPublishList(c *gin.Context) {
 		return
 	}
 
+	c.JSON(http.StatusOK, resp)
+}
+
+func AuditVideo(c *gin.Context) {
+	// 1. 从参数中获取数据
+	// 1. 从 Header 获取 Authorization
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"status_code": 1, "status_msg": "请求头缺少 Authorization"})
+		return
+	}
+
+	// 2. 提取真正的 Token 字符串 (去掉 "Bearer " 前缀)
+	// 假设格式为 "Bearer xxxxx.yyyyy.zzzzz"
+	var token string
+	if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+		token = authHeader[7:]
+	} else {
+		token = authHeader // 容错处理，万一没带前缀直接传了 token
+	}
+
+	videoID, _ := strconv.ParseInt(c.Query("video_id"), 10, 64)
+	action, _ := strconv.ParseInt(c.Query("action"), 10, 32)
+	reason := c.Query("reason")
+
+	// 2. 鉴权：解析 Token 拿到当前操作者的信息
+	claims, err := utils.ParseToken(token)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, video.AuditResponse{StatusCode: 1, StatusMsg: "Token 无效"})
+		return
+	}
+
+	// 3. 重要：在 Web 层拦截非管理员请求，减轻 Logic 层负担
+	if claims.Role != 1 {
+		c.JSON(http.StatusForbidden, video.AuditResponse{StatusCode: 1, StatusMsg: "只有管理员有权审核"})
+		return
+	}
+
+	// 4. 发起 RPC 调用
+	resp, err := rpc_client.VideoClient.AuditVideo(c, &video.AuditRequest{
+		AdminId: claims.UserID,
+		VideoId: videoID,
+		Action:  int32(action),
+		Reason:  reason,
+	})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, video.AuditResponse{StatusCode: 1, StatusMsg: "RPC 调用超时"})
+		return
+	}
+
+	// 5. 返回结果
 	c.JSON(http.StatusOK, resp)
 }

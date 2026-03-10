@@ -12,6 +12,7 @@ import (
 	"github.com/Lhh220/g-video/logic-server/pkg/database"
 	"github.com/Lhh220/g-video/logic-server/pkg/oss"
 	"github.com/Lhh220/g-video/logic-server/pkg/utils"
+	"gorm.io/gorm"
 )
 
 // VideoService 结构体，用于实现 video.proto 定义的接口
@@ -146,5 +147,51 @@ func (s *VideoService) GetPublishList(ctx context.Context, req *video.PublishLis
 		StatusCode: 0,
 		StatusMsg:  "success",
 		VideoList:  videoList,
+	}, nil
+}
+
+func (s *VideoService) AuditVideo(ctx context.Context, req *video.AuditRequest) (*video.AuditResponse, error) {
+	// 使用事务包裹整个审核过程
+	err := database.DB.Transaction(func(tx *gorm.DB) error {
+		// 1. 权限校验
+		var admin model.User
+		if err := tx.First(&admin, req.AdminId).Error; err != nil {
+			return fmt.Errorf("管理员不存在")
+		}
+		if admin.Role != 1 {
+			return fmt.Errorf("权限不足，非管理员身份")
+		}
+
+		// 2. 更新 Video 表的状态 (假设字段名为 status)
+		res := tx.Model(&model.Video{}).Where("id = ?", req.VideoId).Update("status", req.Action)
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return fmt.Errorf("视频不存在")
+		}
+
+		// 3. 写入 AuditLog 审核日志
+		auditLog := model.AuditLog{
+			VideoID:   req.VideoId,
+			AdminID:   req.AdminId,
+			Action:    req.Action,
+			Reason:    req.Reason,
+			CreatedAt: time.Now(), // 确保 model 里 import 了 time
+		}
+		if err := tx.Create(&auditLog).Error; err != nil {
+			return fmt.Errorf("写入审核日志失败: %v", err)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return &video.AuditResponse{StatusCode: 1, StatusMsg: err.Error()}, nil
+	}
+
+	return &video.AuditResponse{
+		StatusCode: 0,
+		StatusMsg:  "审核成功并已记录日志",
 	}, nil
 }

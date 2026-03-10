@@ -4,20 +4,21 @@
 
 统一前缀：api/v1
 
-| **模块** | **功能说明**  | **谓词 (Method)** | **接口路径 (Path)** | **鉴权** | **备注**              |
-| -------- | ------------- | ----------------- | ------------------- | -------- | --------------------- |
-| **用户** | 注册新用户    | `POST`            | `/user/register`    | ❌        | 返回 Token            |
-|          | 用户登录      | `POST`            | `/user/login`       | ❌        | 返回 Token            |
-|          | 获取用户信息  | `GET`             | `/user/info`        | ✅        | 获取基础资料          |
-|          | 更新用户信息  | `PUT`             | `/user/update/:id`  | ✅        | 更新个人用户信息      |
-| **视频** | 发布视频      | `POST`            | `/video/publish`    | ✅        | `multipart/form-data` |
-|          | 视频 Feed 流  | `GET`             | `/video/feed`       | ❌/✅      | 游客/登录均可         |
-|          | 删除视频      | `DELETE`          | `/video/:id`        | ✅        | DB+OSS同步删          |
-| **社交** | 点赞/取消点赞 | `POST`            | `/favorite/action`  | ✅        | 1-点赞，2-取消        |
-|          | 关注/取关     | `POST`            | `/relation/action`  | ✅        | 1-关注，2-取关        |
-|          | 发表评论      | `POST`            | `/comment/action`   | ✅        | 包含评论内容          |
-|          | 删除评论      | `DELETE`          | `/comment/:id`      | ✅        | 仅本人可删            |
-| **审核** | 管理员审核    | `POST`            | `/admin/audit`      | ✅        | **限 role=1 权限**    |
+| **模块** | **功能说明**   | **谓词 (Method)** | **接口路径 (Path)** | **鉴权** | **备注**              |
+| -------- | -------------- | ----------------- | ------------------- | -------- | --------------------- |
+| **用户** | 注册新用户     | `POST`            | `/user/register`    | ❌        | 返回 Token            |
+|          | 用户登录       | `POST`            | `/user/login`       | ❌        | 返回 Token            |
+|          | 获取用户信息   | `GET`             | `/user/info`        | ✅        | 获取基础资料          |
+|          | 更新用户信息   | `PUT`             | `/user/update/:id`  | ✅        | 更新个人用户信息      |
+| **视频** | 发布视频       | `POST`            | `/video/publish`    | ✅        | `multipart/form-data` |
+|          | 视频 Feed 流   | `GET`             | `/video/feed`       | ❌/✅      | 游客/登录均可         |
+|          | 删除视频       | `DELETE`          | `/video/:id`        | ✅        | DB+OSS同步删          |
+| **社交** | 点赞/取消点赞  | `POST`            | `/favorite/action`  | ✅        | 1-点赞，2-取消        |
+|          | 关注/取关      | `POST`            | `/relation/action`  | ✅        | 1-关注，2-取关        |
+|          | 发表评论       | `POST`            | `/comment/action`   | ✅        | 包含评论内容          |
+|          | 删除评论       | `DELETE`          | `/comment/:id`      | ✅        | 仅本人可删            |
+|          | 查看该视频评论 | `GET`             | `/comment/list`     | ✅        | 查看该视频所有的评论  |
+| **审核** | 管理员审核     | `POST`            | `/admin/audit`      | ✅        | **限 role=1 权限**    |
 
 ## 二、用户模块
 
