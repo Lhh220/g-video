@@ -58,6 +58,18 @@ message DeleteResponse {
     string status_msg = 2;
 }
 
+// 获取用户投稿列表
+message PublishListRequest {
+    int64 user_id = 1; // 目标用户的ID
+    string token = 2;  // 访问者的token
+}
+
+message PublishListResponse {
+    int32 status_code = 1;
+    string status_msg = 2;
+    repeated Video video_list = 3; 
+}
+
 // 管理员审核
 message AuditRequest {
     int64 admin_id = 1;
@@ -77,4 +89,5 @@ service VideoService {
     rpc PublishVideo(PublishRequest) returns (PublishResponse);
     rpc DeleteVideo(DeleteRequest) returns (DeleteResponse);
     rpc AuditVideo(AuditRequest) returns (AuditResponse);
+    rpc GetPublishList(PublishListRequest) returns (PublishListResponse);
 }

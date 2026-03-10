@@ -5,7 +5,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/Lhh220/g-video/api/proto/video"                // 替换为你生成的 video 代码路径
+	"github.com/Lhh220/g-video/api/proto/video" // 替换为你生成的 video 代码路径
+	"github.com/Lhh220/g-video/logic-server/pkg/utils"
 	"github.com/Lhh220/g-video/web-server/internal/rpc_client" // 替换为你的 rpc 引用路径
 	"github.com/gin-gonic/gin"
 )
@@ -91,6 +92,47 @@ func GetFeed(c *gin.Context) {
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status_code": 1, "status_msg": "RPC错误"})
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func GetPublishList(c *gin.Context) {
+	userIDStr := c.Query("user_id")
+	authHeader := c.GetHeader("Authorization")
+
+	// 1. 获取 Token
+	var token string
+	if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+		token = authHeader[7:]
+	} else {
+		token = authHeader
+	}
+
+	// 2. 先尝试从 Query 解析 ID
+	var targetUserID int64
+	fmt.Sscanf(userIDStr, "%d", &targetUserID)
+
+	// 3. 【核心修改】如果 URL 里没传 ID (即 targetUserID == 0)
+	// 那么我们才去解析 Token 拿到当前登录人的 ID
+	if targetUserID == 0 {
+		claims, err := utils.ParseToken(token)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"status_code": 1, "status_msg": "Token无效且未指定用户ID"})
+			return
+		}
+		targetUserID = claims.UserID
+	}
+
+	// 4. 调用 RPC 时，传入我们确定好的 targetUserID
+	resp, err := rpc_client.VideoClient.GetPublishList(c, &video.PublishListRequest{
+		UserId: targetUserID, // 这里用判断后的变量
+		Token:  token,
+	})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status_code": 1, "status_msg": "RPC服务异常"})
 		return
 	}
 
