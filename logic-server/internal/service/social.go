@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/Lhh220/g-video/api/proto/social"
+	"github.com/Lhh220/g-video/api/proto/user"
 	"github.com/Lhh220/g-video/logic-server/internal/model"
 	"github.com/Lhh220/g-video/logic-server/pkg/database"
 	"gorm.io/gorm"
@@ -97,4 +98,71 @@ func (s *SocialService) RelationAction(ctx context.Context, req *social.Relation
 		return &social.RelationResponse{StatusCode: 1, StatusMsg: err.Error()}, nil
 	}
 	return &social.RelationResponse{StatusCode: 0, StatusMsg: "操作成功"}, nil
+}
+
+func (s *SocialService) CommentAction(ctx context.Context, req *social.CommentRequest) (*social.CommentResponse, error) {
+	var newComment model.Comment
+
+	err := database.DB.Transaction(func(tx *gorm.DB) error {
+		if req.ActionType == 1 { // 1-发布
+			// 参数检查：内容不能为空
+			if req.CommentText == "" {
+				return fmt.Errorf("评论内容不能为空")
+			}
+			newComment = model.Comment{
+				UserID:  req.UserId,
+				VideoID: req.VideoId,
+				Content: req.CommentText,
+			}
+			if err := tx.Create(&newComment).Error; err != nil {
+				return err
+			}
+			// 视频评论数 +1
+			return tx.Model(&model.Video{}).Where("id = ?", req.VideoId).
+				UpdateColumn("comment_count", gorm.Expr("comment_count + ?", 1)).Error
+
+		} else if req.ActionType == 2 { // 2-删除
+			// 安全删除：必须匹配 ID 且是本人发的
+			result := tx.Where("id = ? AND user_id = ?", req.CommentId, req.UserId).Delete(&model.Comment{})
+			if result.Error != nil {
+				return result.Error
+			}
+			if result.RowsAffected == 0 {
+				return fmt.Errorf("评论不存在或无权删除")
+			}
+			// 视频评论数 -1
+			return tx.Model(&model.Video{}).Where("id = ?", req.VideoId).
+				UpdateColumn("comment_count", gorm.Expr("comment_count - ?", 1)).Error
+		}
+		return fmt.Errorf("未定义的动作类型")
+	})
+
+	if err != nil {
+		return &social.CommentResponse{StatusCode: 1, StatusMsg: err.Error()}, nil
+	}
+
+	// 如果是删除操作 (ActionType == 2)，返回体里的 Comment 可以传 nil
+	var respComment *social.Comment
+	if req.ActionType == 1 {
+		var u model.User
+		database.DB.First(&u, req.UserId)
+		respComment = &social.Comment{
+			Id:         int64(newComment.ID),
+			Content:    newComment.Content,
+			CreateDate: newComment.CreatedAt.Format("01-02"),
+			User: &user.User{
+				Id:            int64(u.ID),
+				Username:      u.Username,
+				Avatar:        u.Avatar,
+				FollowCount:   u.FollowCount,
+				FollowerCount: u.FollowerCount,
+			},
+		}
+	}
+
+	return &social.CommentResponse{
+		StatusCode: 0,
+		StatusMsg:  "success",
+		Comment:    respComment,
+	}, nil
 }

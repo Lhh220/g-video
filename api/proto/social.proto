@@ -3,6 +3,8 @@ syntax = "proto3";
 package social;
 option go_package = "./social";
 
+import "api/proto/user.proto";
+
 // --- 请求与响应 ---
 
 // 点赞操作
@@ -38,9 +40,19 @@ message CommentRequest {
     int64 comment_id = 5;  // 仅删除时需要
 }
 
+// --- 新增：评论详情消息 ---
+message Comment {
+    int64 id = 1;
+    user.User user = 2;   // 使用 user 包里定义的 User 消息
+    string content = 3;
+    string create_date = 4;
+}
+
+// --- 更新：CommentResponse ---
 message CommentResponse {
     int32 status_code = 1;
     string status_msg = 2;
+    Comment comment = 3; // 发布成功时返回该评论对象
 }
 
 // --- 服务定义 ---

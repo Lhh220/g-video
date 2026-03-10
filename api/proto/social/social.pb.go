@@ -7,6 +7,7 @@
 package social
 
 import (
+	user "github.com/Lhh220/g-video/api/proto/user"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -324,17 +325,88 @@ func (x *CommentRequest) GetCommentId() int64 {
 	return 0
 }
 
+// --- 新增：评论详情消息 ---
+type Comment struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	User          *user.User             `protobuf:"bytes,2,opt,name=user,proto3" json:"user,omitempty"` // 使用 user 包里定义的 User 消息
+	Content       string                 `protobuf:"bytes,3,opt,name=content,proto3" json:"content,omitempty"`
+	CreateDate    string                 `protobuf:"bytes,4,opt,name=create_date,json=createDate,proto3" json:"create_date,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Comment) Reset() {
+	*x = Comment{}
+	mi := &file_api_proto_social_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Comment) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Comment) ProtoMessage() {}
+
+func (x *Comment) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_social_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Comment.ProtoReflect.Descriptor instead.
+func (*Comment) Descriptor() ([]byte, []int) {
+	return file_api_proto_social_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *Comment) GetId() int64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *Comment) GetUser() *user.User {
+	if x != nil {
+		return x.User
+	}
+	return nil
+}
+
+func (x *Comment) GetContent() string {
+	if x != nil {
+		return x.Content
+	}
+	return ""
+}
+
+func (x *Comment) GetCreateDate() string {
+	if x != nil {
+		return x.CreateDate
+	}
+	return ""
+}
+
+// --- 更新：CommentResponse ---
 type CommentResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	StatusCode    int32                  `protobuf:"varint,1,opt,name=status_code,json=statusCode,proto3" json:"status_code,omitempty"`
 	StatusMsg     string                 `protobuf:"bytes,2,opt,name=status_msg,json=statusMsg,proto3" json:"status_msg,omitempty"`
+	Comment       *Comment               `protobuf:"bytes,3,opt,name=comment,proto3" json:"comment,omitempty"` // 发布成功时返回该评论对象
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CommentResponse) Reset() {
 	*x = CommentResponse{}
-	mi := &file_api_proto_social_proto_msgTypes[5]
+	mi := &file_api_proto_social_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -346,7 +418,7 @@ func (x *CommentResponse) String() string {
 func (*CommentResponse) ProtoMessage() {}
 
 func (x *CommentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_social_proto_msgTypes[5]
+	mi := &file_api_proto_social_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -359,7 +431,7 @@ func (x *CommentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CommentResponse.ProtoReflect.Descriptor instead.
 func (*CommentResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_social_proto_rawDescGZIP(), []int{5}
+	return file_api_proto_social_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *CommentResponse) GetStatusCode() int32 {
@@ -376,11 +448,18 @@ func (x *CommentResponse) GetStatusMsg() string {
 	return ""
 }
 
+func (x *CommentResponse) GetComment() *Comment {
+	if x != nil {
+		return x.Comment
+	}
+	return nil
+}
+
 var File_api_proto_social_proto protoreflect.FileDescriptor
 
 const file_api_proto_social_proto_rawDesc = "" +
 	"\n" +
-	"\x16api/proto/social.proto\x12\x06social\"f\n" +
+	"\x16api/proto/social.proto\x12\x06social\x1a\x14api/proto/user.proto\"f\n" +
 	"\x0fFavoriteRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x19\n" +
 	"\bvideo_id\x18\x02 \x01(\x03R\avideoId\x12\x1f\n" +
@@ -409,12 +488,20 @@ const file_api_proto_social_proto_rawDesc = "" +
 	"actionType\x12!\n" +
 	"\fcomment_text\x18\x04 \x01(\tR\vcommentText\x12\x1d\n" +
 	"\n" +
-	"comment_id\x18\x05 \x01(\x03R\tcommentId\"Q\n" +
+	"comment_id\x18\x05 \x01(\x03R\tcommentId\"t\n" +
+	"\aComment\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1e\n" +
+	"\x04user\x18\x02 \x01(\v2\n" +
+	".user.UserR\x04user\x12\x18\n" +
+	"\acontent\x18\x03 \x01(\tR\acontent\x12\x1f\n" +
+	"\vcreate_date\x18\x04 \x01(\tR\n" +
+	"createDate\"|\n" +
 	"\x0fCommentResponse\x12\x1f\n" +
 	"\vstatus_code\x18\x01 \x01(\x05R\n" +
 	"statusCode\x12\x1d\n" +
 	"\n" +
-	"status_msg\x18\x02 \x01(\tR\tstatusMsg2\xdb\x01\n" +
+	"status_msg\x18\x02 \x01(\tR\tstatusMsg\x12)\n" +
+	"\acomment\x18\x03 \x01(\v2\x0f.social.CommentR\acomment2\xdb\x01\n" +
 	"\rSocialService\x12C\n" +
 	"\x0eFavoriteAction\x12\x17.social.FavoriteRequest\x1a\x18.social.FavoriteResponse\x12C\n" +
 	"\x0eRelationAction\x12\x17.social.RelationRequest\x1a\x18.social.RelationResponse\x12@\n" +
@@ -433,27 +520,31 @@ func file_api_proto_social_proto_rawDescGZIP() []byte {
 	return file_api_proto_social_proto_rawDescData
 }
 
-var file_api_proto_social_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_api_proto_social_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_api_proto_social_proto_goTypes = []any{
 	(*FavoriteRequest)(nil),  // 0: social.FavoriteRequest
 	(*FavoriteResponse)(nil), // 1: social.FavoriteResponse
 	(*RelationRequest)(nil),  // 2: social.RelationRequest
 	(*RelationResponse)(nil), // 3: social.RelationResponse
 	(*CommentRequest)(nil),   // 4: social.CommentRequest
-	(*CommentResponse)(nil),  // 5: social.CommentResponse
+	(*Comment)(nil),          // 5: social.Comment
+	(*CommentResponse)(nil),  // 6: social.CommentResponse
+	(*user.User)(nil),        // 7: user.User
 }
 var file_api_proto_social_proto_depIdxs = []int32{
-	0, // 0: social.SocialService.FavoriteAction:input_type -> social.FavoriteRequest
-	2, // 1: social.SocialService.RelationAction:input_type -> social.RelationRequest
-	4, // 2: social.SocialService.CommentAction:input_type -> social.CommentRequest
-	1, // 3: social.SocialService.FavoriteAction:output_type -> social.FavoriteResponse
-	3, // 4: social.SocialService.RelationAction:output_type -> social.RelationResponse
-	5, // 5: social.SocialService.CommentAction:output_type -> social.CommentResponse
-	3, // [3:6] is the sub-list for method output_type
-	0, // [0:3] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	7, // 0: social.Comment.user:type_name -> user.User
+	5, // 1: social.CommentResponse.comment:type_name -> social.Comment
+	0, // 2: social.SocialService.FavoriteAction:input_type -> social.FavoriteRequest
+	2, // 3: social.SocialService.RelationAction:input_type -> social.RelationRequest
+	4, // 4: social.SocialService.CommentAction:input_type -> social.CommentRequest
+	1, // 5: social.SocialService.FavoriteAction:output_type -> social.FavoriteResponse
+	3, // 6: social.SocialService.RelationAction:output_type -> social.RelationResponse
+	6, // 7: social.SocialService.CommentAction:output_type -> social.CommentResponse
+	5, // [5:8] is the sub-list for method output_type
+	2, // [2:5] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_api_proto_social_proto_init() }
@@ -467,7 +558,7 @@ func file_api_proto_social_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_proto_social_proto_rawDesc), len(file_api_proto_social_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
