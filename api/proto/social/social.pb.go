@@ -455,6 +455,119 @@ func (x *CommentResponse) GetComment() *Comment {
 	return nil
 }
 
+// 获取评论列表
+type CommentListRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	VideoId       int64                  `protobuf:"varint,1,opt,name=video_id,json=videoId,proto3" json:"video_id,omitempty"`
+	Token         string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"` // 可选，用于判断用户是否关注了评论者等逻辑
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CommentListRequest) Reset() {
+	*x = CommentListRequest{}
+	mi := &file_api_proto_social_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CommentListRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CommentListRequest) ProtoMessage() {}
+
+func (x *CommentListRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_social_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CommentListRequest.ProtoReflect.Descriptor instead.
+func (*CommentListRequest) Descriptor() ([]byte, []int) {
+	return file_api_proto_social_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *CommentListRequest) GetVideoId() int64 {
+	if x != nil {
+		return x.VideoId
+	}
+	return 0
+}
+
+func (x *CommentListRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+type CommentListResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	StatusCode    int32                  `protobuf:"varint,1,opt,name=status_code,json=statusCode,proto3" json:"status_code,omitempty"`
+	StatusMsg     string                 `protobuf:"bytes,2,opt,name=status_msg,json=statusMsg,proto3" json:"status_msg,omitempty"`
+	CommentList   []*Comment             `protobuf:"bytes,3,rep,name=comment_list,json=commentList,proto3" json:"comment_list,omitempty"` // 注意是 repeated，表示数组
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CommentListResponse) Reset() {
+	*x = CommentListResponse{}
+	mi := &file_api_proto_social_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CommentListResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CommentListResponse) ProtoMessage() {}
+
+func (x *CommentListResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_social_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CommentListResponse.ProtoReflect.Descriptor instead.
+func (*CommentListResponse) Descriptor() ([]byte, []int) {
+	return file_api_proto_social_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *CommentListResponse) GetStatusCode() int32 {
+	if x != nil {
+		return x.StatusCode
+	}
+	return 0
+}
+
+func (x *CommentListResponse) GetStatusMsg() string {
+	if x != nil {
+		return x.StatusMsg
+	}
+	return ""
+}
+
+func (x *CommentListResponse) GetCommentList() []*Comment {
+	if x != nil {
+		return x.CommentList
+	}
+	return nil
+}
+
 var File_api_proto_social_proto protoreflect.FileDescriptor
 
 const file_api_proto_social_proto_rawDesc = "" +
@@ -501,11 +614,21 @@ const file_api_proto_social_proto_rawDesc = "" +
 	"statusCode\x12\x1d\n" +
 	"\n" +
 	"status_msg\x18\x02 \x01(\tR\tstatusMsg\x12)\n" +
-	"\acomment\x18\x03 \x01(\v2\x0f.social.CommentR\acomment2\xdb\x01\n" +
+	"\acomment\x18\x03 \x01(\v2\x0f.social.CommentR\acomment\"E\n" +
+	"\x12CommentListRequest\x12\x19\n" +
+	"\bvideo_id\x18\x01 \x01(\x03R\avideoId\x12\x14\n" +
+	"\x05token\x18\x02 \x01(\tR\x05token\"\x89\x01\n" +
+	"\x13CommentListResponse\x12\x1f\n" +
+	"\vstatus_code\x18\x01 \x01(\x05R\n" +
+	"statusCode\x12\x1d\n" +
+	"\n" +
+	"status_msg\x18\x02 \x01(\tR\tstatusMsg\x122\n" +
+	"\fcomment_list\x18\x03 \x03(\v2\x0f.social.CommentR\vcommentList2\xa3\x02\n" +
 	"\rSocialService\x12C\n" +
 	"\x0eFavoriteAction\x12\x17.social.FavoriteRequest\x1a\x18.social.FavoriteResponse\x12C\n" +
 	"\x0eRelationAction\x12\x17.social.RelationRequest\x1a\x18.social.RelationResponse\x12@\n" +
-	"\rCommentAction\x12\x16.social.CommentRequest\x1a\x17.social.CommentResponseB\n" +
+	"\rCommentAction\x12\x16.social.CommentRequest\x1a\x17.social.CommentResponse\x12F\n" +
+	"\vCommentList\x12\x1a.social.CommentListRequest\x1a\x1b.social.CommentListResponseB\n" +
 	"Z\b./socialb\x06proto3"
 
 var (
@@ -520,31 +643,36 @@ func file_api_proto_social_proto_rawDescGZIP() []byte {
 	return file_api_proto_social_proto_rawDescData
 }
 
-var file_api_proto_social_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_api_proto_social_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_api_proto_social_proto_goTypes = []any{
-	(*FavoriteRequest)(nil),  // 0: social.FavoriteRequest
-	(*FavoriteResponse)(nil), // 1: social.FavoriteResponse
-	(*RelationRequest)(nil),  // 2: social.RelationRequest
-	(*RelationResponse)(nil), // 3: social.RelationResponse
-	(*CommentRequest)(nil),   // 4: social.CommentRequest
-	(*Comment)(nil),          // 5: social.Comment
-	(*CommentResponse)(nil),  // 6: social.CommentResponse
-	(*user.User)(nil),        // 7: user.User
+	(*FavoriteRequest)(nil),     // 0: social.FavoriteRequest
+	(*FavoriteResponse)(nil),    // 1: social.FavoriteResponse
+	(*RelationRequest)(nil),     // 2: social.RelationRequest
+	(*RelationResponse)(nil),    // 3: social.RelationResponse
+	(*CommentRequest)(nil),      // 4: social.CommentRequest
+	(*Comment)(nil),             // 5: social.Comment
+	(*CommentResponse)(nil),     // 6: social.CommentResponse
+	(*CommentListRequest)(nil),  // 7: social.CommentListRequest
+	(*CommentListResponse)(nil), // 8: social.CommentListResponse
+	(*user.User)(nil),           // 9: user.User
 }
 var file_api_proto_social_proto_depIdxs = []int32{
-	7, // 0: social.Comment.user:type_name -> user.User
+	9, // 0: social.Comment.user:type_name -> user.User
 	5, // 1: social.CommentResponse.comment:type_name -> social.Comment
-	0, // 2: social.SocialService.FavoriteAction:input_type -> social.FavoriteRequest
-	2, // 3: social.SocialService.RelationAction:input_type -> social.RelationRequest
-	4, // 4: social.SocialService.CommentAction:input_type -> social.CommentRequest
-	1, // 5: social.SocialService.FavoriteAction:output_type -> social.FavoriteResponse
-	3, // 6: social.SocialService.RelationAction:output_type -> social.RelationResponse
-	6, // 7: social.SocialService.CommentAction:output_type -> social.CommentResponse
-	5, // [5:8] is the sub-list for method output_type
-	2, // [2:5] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	5, // 2: social.CommentListResponse.comment_list:type_name -> social.Comment
+	0, // 3: social.SocialService.FavoriteAction:input_type -> social.FavoriteRequest
+	2, // 4: social.SocialService.RelationAction:input_type -> social.RelationRequest
+	4, // 5: social.SocialService.CommentAction:input_type -> social.CommentRequest
+	7, // 6: social.SocialService.CommentList:input_type -> social.CommentListRequest
+	1, // 7: social.SocialService.FavoriteAction:output_type -> social.FavoriteResponse
+	3, // 8: social.SocialService.RelationAction:output_type -> social.RelationResponse
+	6, // 9: social.SocialService.CommentAction:output_type -> social.CommentResponse
+	8, // 10: social.SocialService.CommentList:output_type -> social.CommentListResponse
+	7, // [7:11] is the sub-list for method output_type
+	3, // [3:7] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_api_proto_social_proto_init() }
@@ -558,7 +686,7 @@ func file_api_proto_social_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_proto_social_proto_rawDesc), len(file_api_proto_social_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

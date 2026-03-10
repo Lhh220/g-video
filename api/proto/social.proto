@@ -55,9 +55,22 @@ message CommentResponse {
     Comment comment = 3; // 发布成功时返回该评论对象
 }
 
+// 获取评论列表
+message CommentListRequest {
+    int64 video_id = 1;
+    string token = 2; // 可选，用于判断用户是否关注了评论者等逻辑
+}
+
+message CommentListResponse {
+    int32 status_code = 1;
+    string status_msg = 2;
+    repeated Comment comment_list = 3; // 注意是 repeated，表示数组
+}
+
 // --- 服务定义 ---
 service SocialService {
     rpc FavoriteAction(FavoriteRequest) returns (FavoriteResponse);
     rpc RelationAction(RelationRequest) returns (RelationResponse);
     rpc CommentAction(CommentRequest) returns (CommentResponse);
+    rpc CommentList(CommentListRequest) returns (CommentListResponse);
 }

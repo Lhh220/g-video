@@ -163,3 +163,34 @@ func CommentAction(c *gin.Context) {
 	// Gin 会自动根据 proto 生成的 tag 将其序列化为 JSON
 	c.JSON(http.StatusOK, resp)
 }
+
+func CommentList(c *gin.Context) {
+	videoID, _ := strconv.ParseInt(c.Query("video_id"), 10, 64)
+	//1、从Header获取Authorization
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"status_code": 1, "status_msg": "请求头缺少 Authorization"})
+		return
+	}
+	//2、提取真正的 Token 字符串
+	var token string
+	if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+		token = authHeader[7:]
+	} else {
+		token = authHeader // 容错处理，万一没带前缀直接传了 token
+	}
+
+	resp, err := rpc_client.SocialClient.CommentList(c, &social.CommentListRequest{
+		VideoId: videoID,
+		Token:   token,
+	})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, social.CommentListResponse{
+			StatusCode: 1,
+			StatusMsg:  "RPC 调用失败",
+		})
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}

@@ -22,6 +22,7 @@ const (
 	SocialService_FavoriteAction_FullMethodName = "/social.SocialService/FavoriteAction"
 	SocialService_RelationAction_FullMethodName = "/social.SocialService/RelationAction"
 	SocialService_CommentAction_FullMethodName  = "/social.SocialService/CommentAction"
+	SocialService_CommentList_FullMethodName    = "/social.SocialService/CommentList"
 )
 
 // SocialServiceClient is the client API for SocialService service.
@@ -33,6 +34,7 @@ type SocialServiceClient interface {
 	FavoriteAction(ctx context.Context, in *FavoriteRequest, opts ...grpc.CallOption) (*FavoriteResponse, error)
 	RelationAction(ctx context.Context, in *RelationRequest, opts ...grpc.CallOption) (*RelationResponse, error)
 	CommentAction(ctx context.Context, in *CommentRequest, opts ...grpc.CallOption) (*CommentResponse, error)
+	CommentList(ctx context.Context, in *CommentListRequest, opts ...grpc.CallOption) (*CommentListResponse, error)
 }
 
 type socialServiceClient struct {
@@ -73,6 +75,16 @@ func (c *socialServiceClient) CommentAction(ctx context.Context, in *CommentRequ
 	return out, nil
 }
 
+func (c *socialServiceClient) CommentList(ctx context.Context, in *CommentListRequest, opts ...grpc.CallOption) (*CommentListResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CommentListResponse)
+	err := c.cc.Invoke(ctx, SocialService_CommentList_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SocialServiceServer is the server API for SocialService service.
 // All implementations must embed UnimplementedSocialServiceServer
 // for forward compatibility.
@@ -82,6 +94,7 @@ type SocialServiceServer interface {
 	FavoriteAction(context.Context, *FavoriteRequest) (*FavoriteResponse, error)
 	RelationAction(context.Context, *RelationRequest) (*RelationResponse, error)
 	CommentAction(context.Context, *CommentRequest) (*CommentResponse, error)
+	CommentList(context.Context, *CommentListRequest) (*CommentListResponse, error)
 	mustEmbedUnimplementedSocialServiceServer()
 }
 
@@ -100,6 +113,9 @@ func (UnimplementedSocialServiceServer) RelationAction(context.Context, *Relatio
 }
 func (UnimplementedSocialServiceServer) CommentAction(context.Context, *CommentRequest) (*CommentResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CommentAction not implemented")
+}
+func (UnimplementedSocialServiceServer) CommentList(context.Context, *CommentListRequest) (*CommentListResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CommentList not implemented")
 }
 func (UnimplementedSocialServiceServer) mustEmbedUnimplementedSocialServiceServer() {}
 func (UnimplementedSocialServiceServer) testEmbeddedByValue()                       {}
@@ -176,6 +192,24 @@ func _SocialService_CommentAction_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SocialService_CommentList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CommentListRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SocialServiceServer).CommentList(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SocialService_CommentList_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SocialServiceServer).CommentList(ctx, req.(*CommentListRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SocialService_ServiceDesc is the grpc.ServiceDesc for SocialService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -194,6 +228,10 @@ var SocialService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CommentAction",
 			Handler:    _SocialService_CommentAction_Handler,
+		},
+		{
+			MethodName: "CommentList",
+			Handler:    _SocialService_CommentList_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

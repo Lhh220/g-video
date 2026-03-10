@@ -168,3 +168,43 @@ func (s *SocialService) CommentAction(ctx context.Context, req *social.CommentRe
 		Comment:    respComment,
 	}, nil
 }
+
+func (s *SocialService) CommentList(ctx context.Context, req *social.CommentListRequest) (*social.CommentListResponse, error) {
+	var comments []model.Comment
+
+	// 1. 从数据库查询该视频下的所有评论，按时间倒序排
+	// 使用 Preload("User") 可以关联查询出评论者的基本信息
+	err := database.DB.Where("video_id = ?", req.VideoId).
+		Order("created_at desc").
+		Find(&comments).Error
+
+	if err != nil {
+		return &social.CommentListResponse{StatusCode: 1, StatusMsg: "获取评论列表失败"}, nil
+	}
+
+	// 2. 转换为 protobuf 要求的格式
+	var protoComments []*social.Comment
+	for _, c := range comments {
+		// 这里需要根据 c.UserID 去查用户信息，或者在第一步直接用 Join/Preload
+		var u model.User
+		database.DB.First(&u, c.UserID)
+
+		protoComments = append(protoComments, &social.Comment{
+			Id:         int64(c.ID),
+			Content:    c.Content,
+			CreateDate: c.CreatedAt.Format("01-02"),
+			User: &user.User{
+				Id:       int64(u.ID),
+				Username: u.Username,
+				Avatar:   u.Avatar,
+				// ... 其他字段
+			},
+		})
+	}
+
+	return &social.CommentListResponse{
+		StatusCode:  0,
+		StatusMsg:   "success",
+		CommentList: protoComments,
+	}, nil
+}
