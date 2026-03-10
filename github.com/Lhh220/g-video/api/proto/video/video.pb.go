@@ -7,13 +7,12 @@
 package video
 
 import (
-	reflect "reflect"
-	sync "sync"
-	unsafe "unsafe"
-
 	user "github.com/Lhh220/g-video/api/proto/user"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
+	unsafe "unsafe"
 )
 
 const (
@@ -662,7 +661,7 @@ const file_api_proto_video_proto_rawDesc = "" +
 	"\fPublishVideo\x12\x15.video.PublishRequest\x1a\x16.video.PublishResponse\x12:\n" +
 	"\vDeleteVideo\x12\x14.video.DeleteRequest\x1a\x15.video.DeleteResponse\x127\n" +
 	"\n" +
-	"AuditVideo\x12\x13.video.AuditRequest\x1a\x14.video.AuditResponseB\tZ\a./videob\x06proto3"
+	"AuditVideo\x12\x13.video.AuditRequest\x1a\x14.video.AuditResponseB+Z)github.com/Lhh220/g-video/api/proto/videob\x06proto3"
 
 var (
 	file_api_proto_video_proto_rawDescOnce sync.Once

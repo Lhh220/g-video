@@ -30,10 +30,18 @@ func main() {
 	// 路由定义
 	apiV1 := r.Group("/api/v1")
 	{
-		apiV1.POST("/user/register", handler.Register)
-		apiV1.POST("/user/login", handler.Login)
-		apiV1.GET("/user/info", handler.GetUserInfo)
-		apiV1.POST("/user/update", handler.UpdateUserInfo)
+		userV1 := apiV1.Group("/user")
+		{
+			userV1.POST("/register", handler.Register)
+			userV1.POST("/login", handler.Login)
+			userV1.GET("/info", handler.GetUserInfo)
+			userV1.POST("/update", handler.UpdateUserInfo)
+		}
+		videoV1 := apiV1.Group("/video")
+		{
+			videoV1.POST("/publish", handler.PublishVideo)
+			videoV1.GET("/feed", handler.GetFeed)
+		}
 	}
 
 	r.Run(":8080")

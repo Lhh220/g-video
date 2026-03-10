@@ -1,12 +1,14 @@
 syntax = "proto3";
 
 package video;
-option go_package = "./video";
+option go_package = "github.com/Lhh220/g-video/api/proto/video";
+
+import "api/proto/user.proto";
 
 // --- 基础消息 ---
 message Video {
     int64 id = 1;
-    int64 author_id = 2;
+    user.User author = 2; // 改成引用 user 包里的 User 消息
     string title = 3;
     string play_url = 4;
     string cover_url = 5;
@@ -14,15 +16,17 @@ message Video {
     int64 comment_count = 7;
     bool is_favorite = 8; // 当前登录用户是否点赞
     int32 status = 9;     // 0-待审, 1-发布, 2-驳回
+
 }
 
 // --- 请求与响应 ---
 
 // 投稿请求 (Web-server处理文件分片后传给Logic)
 message PublishRequest {
-    int64 user_id = 1;
+    string token = 1;
     string title = 2;
     bytes data = 3; // 视频二进制数据
+    string filename = 4; // 视频文件名，用于OSS存储 
 }
 
 message PublishResponse {

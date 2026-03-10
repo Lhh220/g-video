@@ -5,6 +5,7 @@ import (
 	"net"
 
 	"github.com/Lhh220/g-video/api/proto/user"
+	"github.com/Lhh220/g-video/api/proto/video"
 	"github.com/Lhh220/g-video/logic-server/internal/config"
 	"github.com/Lhh220/g-video/logic-server/internal/service"
 	"github.com/Lhh220/g-video/logic-server/pkg/database"
@@ -31,11 +32,15 @@ func main() {
 	}
 
 	// 3. 创建 gRPC Server 实例
-	s := grpc.NewServer()
+	s := grpc.NewServer(
+		grpc.MaxRecvMsgSize(50 * 1024 * 1024),
+	)
 
 	// 4. 注册服务：把你的逻辑关联到 Server 上
 	// 这里的 &service.UserService{} 就是你写的处理注册登录的代码
 	user.RegisterUserServiceServer(s, &service.UserService{})
+	// 注册视频服务
+	video.RegisterVideoServiceServer(s, &service.VideoService{})
 
 	// 5. 启动！这里会阻塞，不会退出
 	fmt.Println("🚀 Logic-Server 正在端口 :50051 持续监听中...")
