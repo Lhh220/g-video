@@ -41,6 +41,7 @@ func main() {
 		{
 			videoV1.POST("/publish", handler.PublishVideo)
 			videoV1.GET("/feed", handler.GetFeed)
+			videoV1.GET("/follow/feed", handler.GetFollowingFeed)
 			videoV1.GET("/publish/list", handler.GetPublishList)
 		}
 

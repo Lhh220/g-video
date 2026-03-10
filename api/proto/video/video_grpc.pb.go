@@ -24,6 +24,7 @@ const (
 	VideoService_DeleteVideo_FullMethodName    = "/video.VideoService/DeleteVideo"
 	VideoService_AuditVideo_FullMethodName     = "/video.VideoService/AuditVideo"
 	VideoService_GetPublishList_FullMethodName = "/video.VideoService/GetPublishList"
+	VideoService_FollowingFeed_FullMethodName  = "/video.VideoService/FollowingFeed"
 )
 
 // VideoServiceClient is the client API for VideoService service.
@@ -37,6 +38,7 @@ type VideoServiceClient interface {
 	DeleteVideo(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*DeleteResponse, error)
 	AuditVideo(ctx context.Context, in *AuditRequest, opts ...grpc.CallOption) (*AuditResponse, error)
 	GetPublishList(ctx context.Context, in *PublishListRequest, opts ...grpc.CallOption) (*PublishListResponse, error)
+	FollowingFeed(ctx context.Context, in *FollowingFeedRequest, opts ...grpc.CallOption) (*FollowingFeedResponse, error)
 }
 
 type videoServiceClient struct {
@@ -97,6 +99,16 @@ func (c *videoServiceClient) GetPublishList(ctx context.Context, in *PublishList
 	return out, nil
 }
 
+func (c *videoServiceClient) FollowingFeed(ctx context.Context, in *FollowingFeedRequest, opts ...grpc.CallOption) (*FollowingFeedResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(FollowingFeedResponse)
+	err := c.cc.Invoke(ctx, VideoService_FollowingFeed_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // VideoServiceServer is the server API for VideoService service.
 // All implementations must embed UnimplementedVideoServiceServer
 // for forward compatibility.
@@ -108,6 +120,7 @@ type VideoServiceServer interface {
 	DeleteVideo(context.Context, *DeleteRequest) (*DeleteResponse, error)
 	AuditVideo(context.Context, *AuditRequest) (*AuditResponse, error)
 	GetPublishList(context.Context, *PublishListRequest) (*PublishListResponse, error)
+	FollowingFeed(context.Context, *FollowingFeedRequest) (*FollowingFeedResponse, error)
 	mustEmbedUnimplementedVideoServiceServer()
 }
 
@@ -132,6 +145,9 @@ func (UnimplementedVideoServiceServer) AuditVideo(context.Context, *AuditRequest
 }
 func (UnimplementedVideoServiceServer) GetPublishList(context.Context, *PublishListRequest) (*PublishListResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetPublishList not implemented")
+}
+func (UnimplementedVideoServiceServer) FollowingFeed(context.Context, *FollowingFeedRequest) (*FollowingFeedResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method FollowingFeed not implemented")
 }
 func (UnimplementedVideoServiceServer) mustEmbedUnimplementedVideoServiceServer() {}
 func (UnimplementedVideoServiceServer) testEmbeddedByValue()                      {}
@@ -244,6 +260,24 @@ func _VideoService_GetPublishList_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _VideoService_FollowingFeed_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FollowingFeedRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VideoServiceServer).FollowingFeed(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VideoService_FollowingFeed_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VideoServiceServer).FollowingFeed(ctx, req.(*FollowingFeedRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // VideoService_ServiceDesc is the grpc.ServiceDesc for VideoService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -270,6 +304,10 @@ var VideoService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetPublishList",
 			Handler:    _VideoService_GetPublishList_Handler,
+		},
+		{
+			MethodName: "FollowingFeed",
+			Handler:    _VideoService_FollowingFeed_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

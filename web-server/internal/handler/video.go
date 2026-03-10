@@ -191,3 +191,39 @@ func AuditVideo(c *gin.Context) {
 	// 5. 返回结果
 	c.JSON(http.StatusOK, resp)
 }
+
+// 获取关注用户的视频流 (FollowingFeed)
+func GetFollowingFeed(c *gin.Context) {
+	// 1. 从 Header 获取 Authorization
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"status_code": 1, "status_msg": "请求头缺少 Authorization"})
+		return
+	}
+
+	// 2. 提取真正的 Token 字符串 (去掉 "Bearer " 前缀)
+	// 假设格式为 "Bearer xxxxx.yyyyy.zzzzz"
+	var token string
+	if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+		token = authHeader[7:]
+	} else {
+		token = authHeader // 容错处理，万一没带前缀直接传了 token
+	}
+
+	claims, err := utils.ParseToken(token)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"status_code": 1, "status_msg": "未登录"})
+		return
+	}
+
+	resp, err := rpc_client.VideoClient.FollowingFeed(c, &video.FollowingFeedRequest{
+		UserId: claims.UserID,
+	})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status_code": 1, "status_msg": "服务繁忙"})
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}

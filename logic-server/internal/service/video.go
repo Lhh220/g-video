@@ -195,3 +195,43 @@ func (s *VideoService) AuditVideo(ctx context.Context, req *video.AuditRequest) 
 		StatusMsg:  "审核成功并已记录日志",
 	}, nil
 }
+
+// 获取关注用户的视频流 (FollowingFeed)
+func (s *VideoService) FollowingFeed(ctx context.Context, req *video.FollowingFeedRequest) (*video.FollowingFeedResponse, error) {
+	var videos []model.Video
+
+	// 核心逻辑：
+	// 1. 在 relations 表中找到所有 user_id = req.UserId 的 to_user_id (即关注的对象)
+	// 2. 在 videos 表中找到 author_id 在上述名单中的视频
+	// 3. 按时间倒序排列
+
+	err := database.DB.Table("videos").
+		Joins("JOIN follows ON follows.to_user_id = videos.author_id").
+		Where("follows.user_id = ? AND videos.status = 1", req.UserId). // 别忘了 status=1 表示审核通过
+		Order("videos.created_at DESC").
+		Find(&videos).Error
+
+	if err != nil {
+		return &video.FollowingFeedResponse{StatusCode: 1, StatusMsg: "获取关注流失败"}, nil
+	}
+
+	// 将 model 转换为 proto 格式 (这里通常会封装一个通用转换函数)
+	var protoVideos []*video.Video
+	for _, v := range videos {
+		protoVideos = append(protoVideos, &video.Video{
+			Id:            int64(v.ID),
+			PlayUrl:       v.PlayURL,
+			CoverUrl:      v.CoverURL,
+			FavoriteCount: v.FavoriteCount,
+			CommentCount:  v.CommentCount,
+			Title:         v.Title,
+			// 注意：这里可能还需要查询作者的具体信息填充 Author 字段
+		})
+	}
+
+	return &video.FollowingFeedResponse{
+		StatusCode: 0,
+		StatusMsg:  "success",
+		VideoList:  protoVideos,
+	}, nil
+}

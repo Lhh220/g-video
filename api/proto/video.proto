@@ -82,6 +82,16 @@ message AuditResponse {
     int32 status_code = 1;
     string status_msg = 2;
 }
+// 获取关注用户的视频流 (FollowingFeed)
+message FollowingFeedRequest {
+    int64 user_id = 1; // 当前登录用户的ID
+}
+
+message FollowingFeedResponse {
+    int32 status_code = 1;
+    string status_msg = 2;
+    repeated Video video_list = 3; 
+}
 
 // --- 服务定义 ---
 service VideoService {
@@ -90,4 +100,5 @@ service VideoService {
     rpc DeleteVideo(DeleteRequest) returns (DeleteResponse);
     rpc AuditVideo(AuditRequest) returns (AuditResponse);
     rpc GetPublishList(PublishListRequest) returns (PublishListResponse);
+    rpc FollowingFeed(FollowingFeedRequest) returns (FollowingFeedResponse);
 }
