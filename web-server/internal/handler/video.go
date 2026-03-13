@@ -231,6 +231,7 @@ func GetFollowingFeed(c *gin.Context) {
 
 	resp, err := rpc_client.VideoClient.FollowingFeed(c, &video.FollowingFeedRequest{
 		UserId: claims.UserID,
+		Token:  token,
 	})
 
 	if err != nil {

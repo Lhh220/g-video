@@ -251,14 +251,24 @@ func (s *VideoService) AuditVideo(ctx context.Context, req *video.AuditRequest) 
 func (s *VideoService) FollowingFeed(ctx context.Context, req *video.FollowingFeedRequest) (*video.FollowingFeedResponse, error) {
 	var videos []model.Video
 
+	var currentUserID int64 = 0
+	if req.Token != "" {
+		// 这里调用你项目里解析 JWT Token 的函数
+		// 假设你的函数叫 ParseToken(token string) (int64, error)
+		claims, err := utils.ParseToken(req.Token)
+		if err == nil {
+			currentUserID = claims.UserID // 拿到真实的当前登录用户ID
+		}
+	}
+
 	// 核心逻辑：
 	// 1. 在 relations 表中找到所有 user_id = req.UserId 的 to_user_id (即关注的对象)
 	// 2. 在 videos 表中找到 author_id 在上述名单中的视频
 	// 3. 按时间倒序排列
-
+	fmt.Printf("DEBUG: 当前用户ID: %v\n", currentUserID)
 	err := database.DB.Table("videos").
 		Joins("JOIN follows ON follows.to_user_id = videos.author_id").
-		Where("follows.user_id = ? AND videos.status = 1", req.UserId). // 别忘了 status=1 表示审核通过
+		Where("follows.user_id = ? ", currentUserID). // 别忘了 status=1 表示审核通过
 		Order("videos.created_at DESC").
 		Find(&videos).Error
 
@@ -269,6 +279,21 @@ func (s *VideoService) FollowingFeed(ctx context.Context, req *video.FollowingFe
 	// 将 model 转换为 proto 格式 (这里通常会封装一个通用转换函数)
 	var protoVideos []*video.Video
 	for _, v := range videos {
+		// 1. 查询作者信息
+		var author model.User
+		database.DB.First(&author, v.AuthorID)
+
+		// 2. 查询点赞状态 (这是修复刷新消失的关键！)
+		var isFavorite bool
+		if currentUserID != 0 {
+			var count int64
+			database.DB.Model(&model.Like{}).
+				Where("user_id = ? AND video_id = ?", currentUserID, v.ID).
+				Count(&count)
+			isFavorite = count > 0
+		}
+
+		// 3. 封装完整的视频对象
 		protoVideos = append(protoVideos, &video.Video{
 			Id:            int64(v.ID),
 			PlayUrl:       v.PlayURL,
@@ -276,7 +301,13 @@ func (s *VideoService) FollowingFeed(ctx context.Context, req *video.FollowingFe
 			FavoriteCount: v.FavoriteCount,
 			CommentCount:  v.CommentCount,
 			Title:         v.Title,
-			// 注意：这里可能还需要查询作者的具体信息填充 Author 字段
+			IsFavorite:    isFavorite, // ✅ 加上这个，红心就不会消失了
+			Author: &user.User{
+				Id:       int64(author.ID),
+				Username: author.Username,
+				Avatar:   author.Avatar,
+				IsFollow: true, // ✅ 既然在关注流里，那肯定已经关注了
+			},
 		})
 	}
 

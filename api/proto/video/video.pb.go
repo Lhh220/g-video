@@ -716,6 +716,7 @@ func (x *AuditResponse) GetStatusMsg() string {
 type FollowingFeedRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // 当前登录用户的ID
+	Token         string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`                  // 访问者的token
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -757,11 +758,19 @@ func (x *FollowingFeedRequest) GetUserId() int64 {
 	return 0
 }
 
+func (x *FollowingFeedRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
 type FollowingFeedResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	StatusCode    int32                  `protobuf:"varint,1,opt,name=status_code,json=statusCode,proto3" json:"status_code,omitempty"`
 	StatusMsg     string                 `protobuf:"bytes,2,opt,name=status_msg,json=statusMsg,proto3" json:"status_msg,omitempty"`
 	VideoList     []*Video               `protobuf:"bytes,3,rep,name=video_list,json=videoList,proto3" json:"video_list,omitempty"`
+	NextTime      int64                  `protobuf:"varint,4,opt,name=next_time,json=nextTime,proto3" json:"next_time,omitempty"` // 翻页用的时间戳
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -815,6 +824,13 @@ func (x *FollowingFeedResponse) GetVideoList() []*Video {
 		return x.VideoList
 	}
 	return nil
+}
+
+func (x *FollowingFeedResponse) GetNextTime() int64 {
+	if x != nil {
+		return x.NextTime
+	}
+	return 0
 }
 
 var File_api_proto_video_proto protoreflect.FileDescriptor
@@ -883,16 +899,18 @@ const file_api_proto_video_proto_rawDesc = "" +
 	"\vstatus_code\x18\x01 \x01(\x05R\n" +
 	"statusCode\x12\x1d\n" +
 	"\n" +
-	"status_msg\x18\x02 \x01(\tR\tstatusMsg\"/\n" +
+	"status_msg\x18\x02 \x01(\tR\tstatusMsg\"E\n" +
 	"\x14FollowingFeedRequest\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\x03R\x06userId\"\x84\x01\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x14\n" +
+	"\x05token\x18\x02 \x01(\tR\x05token\"\xa1\x01\n" +
 	"\x15FollowingFeedResponse\x12\x1f\n" +
 	"\vstatus_code\x18\x01 \x01(\x05R\n" +
 	"statusCode\x12\x1d\n" +
 	"\n" +
 	"status_msg\x18\x02 \x01(\tR\tstatusMsg\x12+\n" +
 	"\n" +
-	"video_list\x18\x03 \x03(\v2\f.video.VideoR\tvideoList2\x88\x03\n" +
+	"video_list\x18\x03 \x03(\v2\f.video.VideoR\tvideoList\x12\x1b\n" +
+	"\tnext_time\x18\x04 \x01(\x03R\bnextTime2\x88\x03\n" +
 	"\fVideoService\x12/\n" +
 	"\x04Feed\x12\x12.video.FeedRequest\x1a\x13.video.FeedResponse\x12=\n" +
 	"\fPublishVideo\x12\x15.video.PublishRequest\x1a\x16.video.PublishResponse\x12:\n" +
@@ -900,7 +918,7 @@ const file_api_proto_video_proto_rawDesc = "" +
 	"\n" +
 	"AuditVideo\x12\x13.video.AuditRequest\x1a\x14.video.AuditResponse\x12G\n" +
 	"\x0eGetPublishList\x12\x19.video.PublishListRequest\x1a\x1a.video.PublishListResponse\x12J\n" +
-	"\rFollowingFeed\x12\x1b.video.FollowingFeedRequest\x1a\x1c.video.FollowingFeedResponseB+Z)github.com/Lhh220/g-video/api/proto/videob\x06proto3"
+	"\rFollowingFeed\x12\x1b.video.FollowingFeedRequest\x1a\x1c.video.FollowingFeedResponseB\x11Z\x0fapi/proto/videob\x06proto3"
 
 var (
 	file_api_proto_video_proto_rawDescOnce sync.Once

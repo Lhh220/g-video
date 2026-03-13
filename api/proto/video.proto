@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package video;
-option go_package = "github.com/Lhh220/g-video/api/proto/video";
+option go_package = "api/proto/video";
 
 import "api/proto/user.proto";
 
@@ -85,12 +85,14 @@ message AuditResponse {
 // 获取关注用户的视频流 (FollowingFeed)
 message FollowingFeedRequest {
     int64 user_id = 1; // 当前登录用户的ID
+    string token = 2;  // 访问者的token
 }
 
 message FollowingFeedResponse {
     int32 status_code = 1;
     string status_msg = 2;
     repeated Video video_list = 3; 
+    int64 next_time = 4;   // 翻页用的时间戳
 }
 
 // --- 服务定义 ---

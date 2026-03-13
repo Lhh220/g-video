@@ -7,36 +7,52 @@ const Follow = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
-  const [showComments, setShowComments] = useState(false); // 控制评论弹窗显示
+  const [showComments, setShowComments] = useState(false);
   const videoRef = useRef(null);
 
   useEffect(() => {
-    const fetchVideos = async () => {
-      try {
-        const res = await axios.get('/api/v1/video/follow/feed');
-        setVideos(res.data.video_list || []);
-        setLoading(false);
-      } catch (err) {
-        console.error("加载视频失败:", err);
-        setLoading(false);
-      }
-    };
-    fetchVideos();
-  }, []);
+  const fetchVideos = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      console.log("🛠️ 当前发送的 Token:", token); // 看看这里是不是 null 或者 "undefined"
+      const config = token ? { headers: { 'Authorization': `Bearer ${token}` } } : {};
+      
+      const res = await axios.get('/api/v1/video/follow/feed', config);
+      setVideos(res.data.video_list || []);
+      setLoading(false);
+    } catch (err) {
+      console.error("加载视频失败:", err);
+      setLoading(false);
+    }
+  };
+  fetchVideos();
+}, []);
 
-  // 点击视频切换暂停/播放
-  const togglePlay = () => {
-    if (videoRef.current) {
-      if (videoRef.current.paused) {
-        videoRef.current.play();
-        setIsPaused(false);
-      } else {
-        videoRef.current.pause();
-        setIsPaused(true);
-      }
+  // 1. 关注/取关逻辑
+  const handleFollow = async (authorId, isFollowed) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert("请先登录再关注哦！");
+      return;
+    }
+    // 1为关注，2为取关
+    const actionType = isFollowed ? 2 : 1;
+    try {
+      await axios.post(`/api/v1/relation/action?follow_user_id=${authorId}&action_type=${actionType}`, {}, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      // 更新本地状态，同步 UI
+      const newVideos = [...videos];
+      newVideos[currentIndex].author.is_follow = !isFollowed;
+      setVideos(newVideos);
+    // eslint-disable-next-line no-unused-vars
+    } catch (err) {
+      alert("关注操作失败，请重试");
     }
   };
 
+  // 2. 点赞/取消点赞逻辑
   const handleFavorite = async (videoId, isFavorited) => {
     const token = localStorage.getItem('token');
     const actionType = isFavorited ? 2 : 1;
@@ -53,11 +69,23 @@ const Follow = () => {
     }
   };
 
+  const togglePlay = () => {
+    if (videoRef.current) {
+      if (videoRef.current.paused) {
+        videoRef.current.play();
+        setIsPaused(false);
+      } else {
+        videoRef.current.pause();
+        setIsPaused(true);
+      }
+    }
+  };
+
   const nextVideo = () => {
     if (currentIndex < videos.length - 1) {
       setCurrentIndex(currentIndex + 1);
       setIsPaused(false);
-      setShowComments(false); // 切换视频时自动关闭评论区
+      setShowComments(false);
     }
   };
 
@@ -80,9 +108,7 @@ const Follow = () => {
   return (
     <div className="flex-1 h-screen bg-[#0a0a0a] relative flex items-center justify-center overflow-hidden">
       
-      {/* 1. 视频主容器 */}
       {currentVideo ? (
-        // 设置一个大气的大屏容器，比例接近 16:9 或占据 85% 视口高度
         <div className="relative w-[85%] h-[85vh] bg-black rounded-[3rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.5)] border border-white/5 group">
           
           <video
@@ -95,19 +121,15 @@ const Follow = () => {
             onClick={togglePlay}
           />
 
-          {/* --- 覆盖在视频上的 UI 层 --- */}
-          
-          {/* 评论弹窗组件：它是绝对定位的，会覆盖在当前这个视频容器内 */}
           <CommentDrawer 
             videoId={currentVideo.id} 
             isOpen={showComments} 
             onClose={() => setShowComments(false)} 
           />
 
-          {/* 底部渐变黑影 (确保文字清晰) */}
           <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-black/90 to-transparent z-10 pointer-events-none"></div>
 
-          {/* 作者信息与标题 */}
+          {/* 作者信息 */}
           <div className="absolute bottom-12 left-12 z-20 pointer-events-none text-white drop-shadow-2xl">
             <h3 className="text-4xl font-black mb-4 tracking-wide">
               @{currentVideo.author?.name || currentVideo.author?.username || '匿名用户'}
@@ -119,9 +141,34 @@ const Follow = () => {
 
           {/* 右侧互动按钮组 */}
           <div className="absolute right-10 bottom-24 z-20 flex flex-col gap-14 items-center">
-            {/* 点赞 */}
+            
+            {/* 1. 作者头像与关注按钮 */}
+            <div className="relative mb-4">
+              <div className="w-20 h-20 rounded-full border-2 border-white overflow-hidden shadow-lg bg-gray-800">
+                <img 
+                  src={currentVideo.author?.avatar || 'https://via.placeholder.com/150'} 
+                  alt="avatar" 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              {/* 关注按钮 */}
+              <button 
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  handleFollow(currentVideo.author?.id, currentVideo.author?.is_follow); 
+                }}
+                className={`absolute -bottom-3 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-md active:scale-75
+                  ${currentVideo.author?.is_follow ? 'bg-gray-500' : 'bg-red-500 hover:scale-110'}`}
+              >
+                <span className={`text-white text-2xl font-bold leading-none transition-transform ${currentVideo.author?.is_follow ? 'rotate-45' : 'rotate-0'}`}>
+                  +
+                </span>
+              </button>
+            </div>
+
+            {/* 2. 点赞 */}
             <div 
-              className="flex flex-col items-center gap-2 cursor-pointer group/btn transition transform hover:scale-110"
+              className="flex flex-col items-center gap-2 cursor-pointer transition transform hover:scale-110"
               onClick={(e) => { e.stopPropagation(); handleFavorite(currentVideo.id, currentVideo.is_favorite); }}
             >
               <span className={`text-7xl drop-shadow-lg transition-all active:scale-150 ${currentVideo.is_favorite ? 'text-red-500' : 'text-white'}`}>
@@ -130,7 +177,7 @@ const Follow = () => {
               <b className="text-white text-sm font-bold tracking-widest shadow-black">点赞</b>
             </div>
 
-            {/* 评论按钮 - 点击开启 CommentDrawer */}
+            {/* 3. 评论 */}
             <div 
               className="flex flex-col items-center gap-2 cursor-pointer transition transform hover:scale-110"
               onClick={(e) => { e.stopPropagation(); setShowComments(true); }}
@@ -140,7 +187,6 @@ const Follow = () => {
             </div>
           </div>
 
-          {/* 暂停指示器 */}
           {isPaused && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/20 z-30 pointer-events-none">
               <span className="text-[140px] opacity-60">▶️</span>
@@ -151,18 +197,12 @@ const Follow = () => {
         <div className="text-gray-500 text-3xl font-bold">未检测到视频流</div>
       )}
 
-      {/* 2. 屏幕最右侧翻页控制 (独立定位) */}
+      {/* 翻页控制 */}
       <div className="fixed right-10 top-1/2 -translate-y-1/2 flex flex-col gap-12 z-[100]">
-        <button 
-          onClick={prevVideo}
-          className="w-24 h-24 bg-white/5 hover:bg-white/25 backdrop-blur-2xl rounded-full border-2 border-white/20 text-white flex items-center justify-center transition-all hover:scale-110 active:scale-75 shadow-2xl"
-        >
+        <button onClick={prevVideo} className="w-24 h-24 bg-white/5 hover:bg-white/25 backdrop-blur-2xl rounded-full border-2 border-white/20 text-white flex items-center justify-center transition-all hover:scale-110">
           <span className="text-5xl font-light">▲</span>
         </button>
-        <button 
-          onClick={nextVideo}
-          className="w-24 h-24 bg-white/5 hover:bg-white/25 backdrop-blur-2xl rounded-full border-2 border-white/20 text-white flex items-center justify-center transition-all hover:scale-110 active:scale-75 shadow-2xl"
-        >
+        <button onClick={nextVideo} className="w-24 h-24 bg-white/5 hover:bg-white/25 backdrop-blur-2xl rounded-full border-2 border-white/20 text-white flex items-center justify-center transition-all hover:scale-110">
           <span className="text-5xl font-light">▼</span>
         </button>
       </div>
