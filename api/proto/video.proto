@@ -16,7 +16,7 @@ message Video {
     int64 comment_count = 7;
     bool is_favorite = 8; // 当前登录用户是否点赞
     int32 status = 9;     // 0-待审, 1-发布, 2-驳回
-
+    
 }
 
 // --- 请求与响应 ---

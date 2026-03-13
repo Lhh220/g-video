@@ -11,6 +11,7 @@ message User {
     int32 role = 4; // 0-用户, 1-管理员
     int64 follower_count = 5;
     int64 follow_count = 6;
+    bool is_follow = 7; // ✅ 加上这一行，编号确保不重复
 }
 
 // --- 请求与响应 ---

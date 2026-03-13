@@ -61,19 +61,27 @@ func (s *VideoService) PublishVideo(ctx context.Context, req *video.PublishReque
 func (s *VideoService) Feed(ctx context.Context, req *video.FeedRequest) (*video.FeedResponse, error) {
 	var videos []model.Video
 
-	// 1. 处理时间锚点 (latest_time)
+	// 1. 处理时间锚点
 	t := time.Now()
 	if req.LatestTime != 0 {
 		t = time.UnixMilli(req.LatestTime)
 	}
 
-	// 2. 从数据库查询 (按时间倒序取30条)
-	err := database.DB.Where("created_at < ?", t).
-		Order("created_at desc").
-		Limit(30).
-		Find(&videos).Error
+	// 2. 从数据库查询视频
+	err := database.DB.Where("created_at < ?", t).Order("created_at desc").Limit(30).Find(&videos).Error
 	if err != nil {
 		return &video.FeedResponse{StatusCode: 1, StatusMsg: "查询失败"}, nil
+	}
+
+	// --- 核心修复：解析 Token 获取当前登录用户 ID ---
+	var currentUserID int64 = 0
+	if req.Token != "" {
+		// 这里调用你项目里解析 JWT Token 的函数
+		// 假设你的函数叫 ParseToken(token string) (int64, error)
+		claims, err := utils.ParseToken(req.Token)
+		if err == nil {
+			currentUserID = claims.UserID // 拿到真实的当前登录用户ID
+		}
 	}
 
 	// 3. 封装返回数据
@@ -81,20 +89,45 @@ func (s *VideoService) Feed(ctx context.Context, req *video.FeedRequest) (*video
 	var nextTime int64 = time.Now().UnixMilli()
 
 	for _, v := range videos {
-		// 【进阶思考】这里你可以直接查数据库，或者为了规范调用 UserClient 的 RPC 接口
-		// 暂时先写死或者简单查下数据库，保证流程通
 		var userModel model.User
-		database.DB.First(&userModel, v.AuthorID) // 查询作者信息
+		database.DB.First(&userModel, v.AuthorID)
+
+		// --- 查询关注状态 ---
+		isFollow := false
+		if req.Token != "" {
+			claims, err := utils.ParseToken(req.Token)
+			if err == nil {
+				currentUserID = claims.UserID
+				// 👈 加这一行，看看控制台打印的是不是 5 (或者你的登录ID)
+				fmt.Printf("🎯 [Feed] 解析 Token 成功，当前登录用户 ID: %d\n", currentUserID)
+			} else {
+				fmt.Printf("⚠️ [Feed] Token 解析失败: %v\n", err)
+			}
+		}
+
+		if currentUserID != 0 {
+			var count int64
+			// 使用独立的 tx 句柄查询
+			tx := database.DB.Session(&gorm.Session{})
+			err := tx.Model(&model.Follow{}).
+				Where("user_id = ? AND to_user_id = ?", currentUserID, v.AuthorID).
+				Count(&count).Error
+
+			if err != nil {
+				fmt.Printf("DEBUG: 查询关注表报错: %v\n", err)
+			}
+			isFollow = count > 0
+			fmt.Printf("DEBUG: 最终关注结果: %v\n", isFollow)
+		}
 		videoList = append(videoList, &video.Video{
-			Id:            int64(v.ID),
-			PlayUrl:       v.PlayURL,
-			CoverUrl:      v.CoverURL,
-			FavoriteCount: v.FavoriteCount,
-			CommentCount:  v.CommentCount,
-			Title:         v.Title,
+			Id:      int64(v.ID),
+			PlayUrl: v.PlayURL,
+			// ... 其他字段保持不变
 			Author: &user.User{
 				Id:       v.AuthorID,
-				Username: userModel.Username, // 之后可以通过 UserClient 查出真实姓名
+				Username: userModel.Username,
+				Avatar:   userModel.Avatar,
+				IsFollow: isFollow, // ✅ 这里就不会报成员不存在的错了
 			},
 		})
 		nextTime = v.CreatedAt.UnixMilli()

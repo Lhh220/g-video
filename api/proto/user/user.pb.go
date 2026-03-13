@@ -30,6 +30,7 @@ type User struct {
 	Role          int32                  `protobuf:"varint,4,opt,name=role,proto3" json:"role,omitempty"` // 0-用户, 1-管理员
 	FollowerCount int64                  `protobuf:"varint,5,opt,name=follower_count,json=followerCount,proto3" json:"follower_count,omitempty"`
 	FollowCount   int64                  `protobuf:"varint,6,opt,name=follow_count,json=followCount,proto3" json:"follow_count,omitempty"`
+	IsFollow      bool                   `protobuf:"varint,7,opt,name=is_follow,json=isFollow,proto3" json:"is_follow,omitempty"` // ✅ 加上这一行，编号确保不重复
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -104,6 +105,13 @@ func (x *User) GetFollowCount() int64 {
 		return x.FollowCount
 	}
 	return 0
+}
+
+func (x *User) GetIsFollow() bool {
+	if x != nil {
+		return x.IsFollow
+	}
+	return false
 }
 
 // 注册请求
@@ -610,14 +618,15 @@ var File_api_proto_user_proto protoreflect.FileDescriptor
 
 const file_api_proto_user_proto_rawDesc = "" +
 	"\n" +
-	"\x14api/proto/user.proto\x12\x04user\"\xa8\x01\n" +
+	"\x14api/proto/user.proto\x12\x04user\"\xc5\x01\n" +
 	"\x04User\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x16\n" +
 	"\x06avatar\x18\x03 \x01(\tR\x06avatar\x12\x12\n" +
 	"\x04role\x18\x04 \x01(\x05R\x04role\x12%\n" +
 	"\x0efollower_count\x18\x05 \x01(\x03R\rfollowerCount\x12!\n" +
-	"\ffollow_count\x18\x06 \x01(\x03R\vfollowCount\"]\n" +
+	"\ffollow_count\x18\x06 \x01(\x03R\vfollowCount\x12\x1b\n" +
+	"\tis_follow\x18\a \x01(\bR\bisFollow\"]\n" +
 	"\x0fRegisterRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\x12\x12\n" +
@@ -666,7 +675,7 @@ const file_api_proto_user_proto_rawDesc = "" +
 	"\bRegister\x12\x15.user.RegisterRequest\x1a\x16.user.RegisterResponse\x120\n" +
 	"\x05Login\x12\x12.user.LoginRequest\x1a\x13.user.LoginResponse\x12<\n" +
 	"\vGetUserInfo\x12\x15.user.UserInfoRequest\x1a\x16.user.UserInfoResponse\x12K\n" +
-	"\x0eUpdateUserInfo\x12\x1b.user.UpdateUserInfoRequest\x1a\x1c.user.UpdateUserInfoResponseB\bZ\x06./userb\x06proto3"
+	"\x0eUpdateUserInfo\x12\x1b.user.UpdateUserInfoRequest\x1a\x1c.user.UpdateUserInfoResponseB*Z(github.com/Lhh220/g-video/api/proto/userb\x06proto3"
 
 var (
 	file_api_proto_user_proto_rawDescOnce sync.Once

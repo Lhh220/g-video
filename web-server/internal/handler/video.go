@@ -78,17 +78,29 @@ func PublishVideo(c *gin.Context) {
 }
 
 func GetFeed(c *gin.Context) {
-	// 获取可选参数 latest_time
+	// 1. 获取 Authorization Header (但不强制要求)
+	authHeader := c.GetHeader("Authorization")
+
+	var token string
+	if authHeader != "" {
+		if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+			token = authHeader[7:]
+		} else {
+			token = authHeader
+		}
+	}
+
+	// 2. 获取可选参数 latest_time
 	latestTimeStr := c.Query("latest_time")
 	var latestTime int64
 	if latestTimeStr != "" {
 		fmt.Sscanf(latestTimeStr, "%d", &latestTime)
 	}
 
-	// 调用 RPC
+	// 3. 调用 RPC (即便 token 是空的也传过去)
 	resp, err := rpc_client.VideoClient.Feed(c, &video.FeedRequest{
 		LatestTime: latestTime,
-		Token:      c.Query("token"), // 传入 token 以便后续判断是否点赞
+		Token:      token, // Logic 层解析失败会当做游客处理，不会报错
 	})
 
 	if err != nil {
@@ -96,6 +108,7 @@ func GetFeed(c *gin.Context) {
 		return
 	}
 
+	// 4. 返回结果
 	c.JSON(http.StatusOK, resp)
 }
 
