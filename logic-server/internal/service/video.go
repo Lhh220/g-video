@@ -119,6 +119,23 @@ func (s *VideoService) Feed(ctx context.Context, req *video.FeedRequest) (*video
 			isFollow = count > 0
 			fmt.Printf("DEBUG: 最终关注结果: %v\n", isFollow)
 		}
+		//查询点赞状态
+		isFavorite := false
+		if currentUserID != 0 {
+			var count int64
+			// 使用独立的 tx 句柄查询
+			tx := database.DB.Session(&gorm.Session{})
+			err := tx.Model(&model.Like{}).
+				Where("user_id = ? AND video_id = ?", currentUserID, v.ID).
+				Count(&count).Error
+
+			if err != nil {
+				fmt.Printf("DEBUG: 查询点赞表报错: %v\n", err)
+			}
+			isFavorite = count > 0
+			fmt.Printf("DEBUG: 最终点赞结果: %v\n", isFavorite)
+		}
+
 		videoList = append(videoList, &video.Video{
 			Id:      int64(v.ID),
 			PlayUrl: v.PlayURL,
@@ -127,8 +144,9 @@ func (s *VideoService) Feed(ctx context.Context, req *video.FeedRequest) (*video
 				Id:       v.AuthorID,
 				Username: userModel.Username,
 				Avatar:   userModel.Avatar,
-				IsFollow: isFollow, // ✅ 这里就不会报成员不存在的错了
+				IsFollow: isFollow,
 			},
+			IsFavorite: isFavorite,
 		})
 		nextTime = v.CreatedAt.UnixMilli()
 	}
