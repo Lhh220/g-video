@@ -5,6 +5,7 @@ import Home from './pages/Home';
 import Follow from './pages/Follow'; // 1. 引入新创建的关注页面
 import AuthRoute from './components/AuthRoute';
 import Sidebar from './components/Sidebar';
+import Profile from './pages/Profile';
 
 // 布局组件
 const MainLayout = ({ children }) => (
@@ -46,9 +47,9 @@ function App() {
         <Route path="/profile" element={
           <AuthRoute>
             <MainLayout>
-              <div className="text-white p-10 text-3xl font-bold italic">
-                我的个人页 (COMING SOON...)
-              </div>
+  
+                <Profile />
+              
             </MainLayout>
           </AuthRoute>
         } />

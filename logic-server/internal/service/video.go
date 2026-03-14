@@ -185,6 +185,7 @@ func (s *VideoService) GetPublishList(ctx context.Context, req *video.PublishLis
 			Author: &user.User{
 				Id:       int64(userModel.ID),
 				Username: userModel.Username,
+				Avatar:   userModel.Avatar,
 			},
 			PlayUrl:       v.PlayURL,
 			CoverUrl:      v.CoverURL,
@@ -316,4 +317,43 @@ func (s *VideoService) FollowingFeed(ctx context.Context, req *video.FollowingFe
 		StatusMsg:  "success",
 		VideoList:  protoVideos,
 	}, nil
+}
+
+// DeleteVideo 实现删除视频接口
+func (s *VideoService) DeleteVideo(ctx context.Context, req *video.DeleteRequest) (*video.DeleteResponse, error) {
+	var videoModel model.Video
+
+	// 1. 查询视频信息
+	if err := database.DB.First(&videoModel, req.VideoId).Error; err != nil {
+		return &video.DeleteResponse{StatusCode: 1, StatusMsg: "视频不存在"}, nil
+	}
+
+	// 2. 鉴权：只有作者本人可以删除
+	if videoModel.AuthorID != req.UserId {
+		return &video.DeleteResponse{StatusCode: 1, StatusMsg: "无权删除他人视频"}, nil
+	}
+
+	// 3. 开启事务：删除数据库记录 + 尝试清理 OSS (可选)
+	err := database.DB.Transaction(func(tx *gorm.DB) error {
+		// 删除视频记录
+		if err := tx.Delete(&videoModel).Error; err != nil {
+			return err
+		}
+
+		// 还可以顺便删除该视频相关的点赞和评论记录
+		tx.Where("video_id = ?", req.VideoId).Delete(&model.Like{})
+		// tx.Where("video_id = ?", req.VideoId).Delete(&model.Comment{})
+
+		return nil
+	})
+
+	if err != nil {
+		return &video.DeleteResponse{StatusCode: 1, StatusMsg: "数据库操作失败"}, nil
+	}
+
+	// 4. (可选) 异步清理 OSS 文件，避免浪费空间
+	// 需在 oss 包中实现 DeleteFile(objectName string)
+	// go oss.DeleteFile(videoModel.PlayURL)
+
+	return &video.DeleteResponse{StatusCode: 0, StatusMsg: "删除成功"}, nil
 }

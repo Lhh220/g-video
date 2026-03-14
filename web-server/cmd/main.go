@@ -43,6 +43,7 @@ func main() {
 			videoV1.GET("/feed", handler.GetFeed)
 			videoV1.GET("/follow/feed", handler.GetFollowingFeed)
 			videoV1.GET("/publish/list", handler.GetPublishList)
+			videoV1.DELETE("/:id", handler.DeleteVideo)
 		}
 
 		apiV1.POST("/favorite/action", handler.FavoriteAction)

@@ -241,3 +241,38 @@ func GetFollowingFeed(c *gin.Context) {
 
 	c.JSON(http.StatusOK, resp)
 }
+
+func DeleteVideo(c *gin.Context) {
+	// 1. 鉴权获取当前用户 ID
+	authHeader := c.GetHeader("Authorization")
+	token := ""
+	if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+		token = authHeader[7:]
+	}
+
+	claims, err := utils.ParseToken(token)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"status_code": 1, "status_msg": "未登录"})
+		return
+	}
+
+	// 2. 获取视频 ID
+	videoID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+	if videoID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"status_code": 1, "status_msg": "无效的视频ID"})
+		return
+	}
+
+	// 3. RPC 调用 Logic 层
+	resp, err := rpc_client.VideoClient.DeleteVideo(c, &video.DeleteRequest{
+		UserId:  claims.UserID,
+		VideoId: videoID,
+	})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status_code": 1, "status_msg": "RPC服务异常"})
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}

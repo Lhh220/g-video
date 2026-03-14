@@ -1,0 +1,152 @@
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+import EditProfileModal from '../components/EditProfileModal';
+import VideoPlayerModal from '../components/VideoPlayerModal';
+
+const Profile = () => {
+  const [user, setUser] = useState(null);
+  const [videos, setVideos] = useState([]);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [selectedVideo, setSelectedVideo] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // 获取数据
+  const fetchProfileData = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    
+    setLoading(true);
+    try {
+      // 1. 调用投稿列表接口
+      const res = await axios.get('/api/v1/video/publish/list', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (res.data.status_msg === "success") {
+        const videoList = res.data.video_list || [];
+        setVideos(videoList);
+        
+        // 2. 优先从视频列表的 author 字段提取用户信息
+        if (videoList.length > 0) {
+          setUser(videoList[0].author);
+        } else {
+          // 3. 兜底：请求用户信息接口
+          const infoRes = await axios.get('/api/v1/user/info', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (infoRes.data.status_msg === "查询成功") setUser(infoRes.data.user);
+        }
+      }
+    } catch (err) {
+      console.error("加载失败", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 删除视频逻辑
+  const handleDeleteVideo = async (e, videoId) => {
+    e.stopPropagation(); // 阻止触发父级的播放弹窗
+    if (!window.confirm("确定要永久删除这段视频吗？")) return;
+
+    const token = localStorage.getItem('token');
+    try {
+      // 匹配后端 RESTful 路由: DELETE /api/v1/video/:id
+      const res = await axios.delete(`/api/v1/video/${videoId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (res.data.status_msg === "删除成功") {
+        alert("删除成功");
+        // 局部更新列表，不刷新页面
+        setVideos(prev => prev.filter(v => v.id !== videoId));
+      } else {
+        alert("删除失败: " + res.data.status_msg);
+      }
+    // eslint-disable-next-line no-unused-vars
+    } catch (err) {
+      alert("网络错误，删除失败");
+    }
+  };
+
+  useEffect(() => { fetchProfileData(); }, []);
+
+  if (loading) return <div className="text-zinc-500 p-20 text-center">加载中...</div>;
+
+  return (
+    <div className="flex-1 h-screen overflow-y-auto bg-black text-white p-8 custom-scrollbar relative">
+      {/* 头部用户信息 */}
+      <div className="flex items-center justify-between mb-12 pb-10 border-b border-white/10">
+        <div className="flex items-center gap-8">
+          <img 
+            src={user?.avatar || 'https://via.placeholder.com/150'} 
+            className="w-32 h-32 rounded-full object-cover border-4 border-zinc-800 shadow-2xl"
+          />
+          <div>
+            <h1 className="text-4xl font-bold mb-2">{user?.username || '未登录'}</h1>
+            <p className="text-zinc-500 font-mono text-sm">ID: {user?.id || '---'}</p>
+            <div className="flex gap-6 mt-4 text-sm text-zinc-300">
+              <span><strong className="text-white">{videos.length}</strong> 投稿</span>
+              <span><strong className="text-white">{user?.follower_count || 0}</strong> 粉丝</span>
+            </div>
+          </div>
+        </div>
+        <button 
+          onClick={() => setIsEditOpen(true)}
+          className="px-6 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-full text-sm font-bold transition-all"
+        >
+          编辑资料
+        </button>
+      </div>
+
+      {/* 视频列表网格 */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+        {videos.map((video) => (
+          <div 
+            key={video.id} 
+            className="aspect-[3/4] relative cursor-pointer group overflow-hidden bg-zinc-900 rounded-lg"
+            onClick={() => setSelectedVideo(video)}
+          >
+            {/* 封面 */}
+            <img 
+              src={video.cover_url} 
+              className="w-full h-full object-cover group-hover:scale-110 transition duration-700" 
+            />
+
+            {/* 删除按钮 */}
+            <button 
+              onClick={(e) => handleDeleteVideo(e, video.id)}
+              className="absolute top-2 right-2 p-2 bg-red-500/90 hover:bg-red-600 rounded-full opacity-0 group-hover:opacity-100 transition-all z-20 shadow-lg translate-y-2 group-hover:translate-y-0"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+
+            {/* 底部信息遮罩 */}
+            <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/90 to-transparent">
+              <p className="text-xs font-medium line-clamp-1">{video.title}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* 所有的弹窗都要放在外层，确保 z-index 不受干扰 */}
+      <EditProfileModal 
+        isOpen={isEditOpen} 
+        user={user} 
+        onClose={() => setIsEditOpen(false)} 
+        onRefresh={fetchProfileData} 
+      />
+      
+      {selectedVideo && (
+        <VideoPlayerModal 
+          video={selectedVideo} 
+          onClose={() => setSelectedVideo(null)} 
+        />
+      )}
+    </div>
+  );
+};
+
+export default Profile;
