@@ -28,8 +28,8 @@ type User struct {
 	Username      string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
 	Avatar        string                 `protobuf:"bytes,3,opt,name=avatar,proto3" json:"avatar,omitempty"`
 	Role          int32                  `protobuf:"varint,4,opt,name=role,proto3" json:"role,omitempty"` // 0-用户, 1-管理员
-	FollowerCount int64                  `protobuf:"varint,5,opt,name=follower_count,json=followerCount,proto3" json:"follower_count,omitempty"`
-	FollowCount   int64                  `protobuf:"varint,6,opt,name=follow_count,json=followCount,proto3" json:"follow_count,omitempty"`
+	FollowerCount *int64                 `protobuf:"varint,5,opt,name=follower_count,json=followerCount,proto3,oneof" json:"follower_count,omitempty"`
+	FollowCount   *int64                 `protobuf:"varint,6,opt,name=follow_count,json=followCount,proto3,oneof" json:"follow_count,omitempty"`
 	IsFollow      bool                   `protobuf:"varint,7,opt,name=is_follow,json=isFollow,proto3" json:"is_follow,omitempty"` // ✅ 加上这一行，编号确保不重复
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -94,15 +94,15 @@ func (x *User) GetRole() int32 {
 }
 
 func (x *User) GetFollowerCount() int64 {
-	if x != nil {
-		return x.FollowerCount
+	if x != nil && x.FollowerCount != nil {
+		return *x.FollowerCount
 	}
 	return 0
 }
 
 func (x *User) GetFollowCount() int64 {
-	if x != nil {
-		return x.FollowCount
+	if x != nil && x.FollowCount != nil {
+		return *x.FollowCount
 	}
 	return 0
 }
@@ -618,15 +618,17 @@ var File_api_proto_user_proto protoreflect.FileDescriptor
 
 const file_api_proto_user_proto_rawDesc = "" +
 	"\n" +
-	"\x14api/proto/user.proto\x12\x04user\"\xc5\x01\n" +
+	"\x14api/proto/user.proto\x12\x04user\"\xf3\x01\n" +
 	"\x04User\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x16\n" +
 	"\x06avatar\x18\x03 \x01(\tR\x06avatar\x12\x12\n" +
-	"\x04role\x18\x04 \x01(\x05R\x04role\x12%\n" +
-	"\x0efollower_count\x18\x05 \x01(\x03R\rfollowerCount\x12!\n" +
-	"\ffollow_count\x18\x06 \x01(\x03R\vfollowCount\x12\x1b\n" +
-	"\tis_follow\x18\a \x01(\bR\bisFollow\"]\n" +
+	"\x04role\x18\x04 \x01(\x05R\x04role\x12*\n" +
+	"\x0efollower_count\x18\x05 \x01(\x03H\x00R\rfollowerCount\x88\x01\x01\x12&\n" +
+	"\ffollow_count\x18\x06 \x01(\x03H\x01R\vfollowCount\x88\x01\x01\x12\x1b\n" +
+	"\tis_follow\x18\a \x01(\bR\bisFollowB\x11\n" +
+	"\x0f_follower_countB\x0f\n" +
+	"\r_follow_count\"]\n" +
 	"\x0fRegisterRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\x12\x12\n" +
@@ -723,6 +725,7 @@ func file_api_proto_user_proto_init() {
 	if File_api_proto_user_proto != nil {
 		return
 	}
+	file_api_proto_user_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

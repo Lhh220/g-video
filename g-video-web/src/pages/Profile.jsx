@@ -11,38 +11,61 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
 
   // 获取数据
-  const fetchProfileData = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
+const fetchProfileData = async () => {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    setLoading(false);
+    return;
+  }
+  
+  setLoading(true);
+  try {
+    // ========== 核心修改1：优先调用用户信息接口（确保能拿到 id） ==========
+    // 先调用户信息接口，直接获取完整的用户数据（包含 id）
+    const infoRes = await axios.get('/api/v1/user/info', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
     
-    setLoading(true);
+    console.log("用户信息接口返回：", infoRes.data); // 打印日志，排查返回结构
+    if (infoRes.data.status_msg === "查询成功" && infoRes.data.user) {
+      setUser(infoRes.data.user); // 直接赋值完整用户信息（包含 id）
+    }
+
+    // ========== 原有逻辑：调用投稿列表接口 ==========
+    const res = await axios.get('/api/v1/video/publish/list', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (res.data.status_msg === "success") {
+      const videoList = res.data.video_list || [];
+      setVideos(videoList);
+      
+      // 可选：如果投稿列表的 author 信息更全，覆盖用户信息（保留你原有逻辑）
+      if (videoList.length > 0 && videoList[0].author) {
+        setUser(videoList[0].author);
+      }
+    }
+  } catch (err) {
+    console.error("加载失败", err);
+    // ========== 核心修改2：接口报错时，单独重试用户信息接口 ==========
     try {
-      // 1. 调用投稿列表接口
-      const res = await axios.get('/api/v1/video/publish/list', {
+      const fallbackRes = await axios.get('/api/v1/user/info', {
         headers: { Authorization: `Bearer ${token}` }
       });
-
-      if (res.data.status_msg === "success") {
-        const videoList = res.data.video_list || [];
-        setVideos(videoList);
-        
-        // 2. 优先从视频列表的 author 字段提取用户信息
-        if (videoList.length > 0) {
-          setUser(videoList[0].author);
-        } else {
-          // 3. 兜底：请求用户信息接口
-          const infoRes = await axios.get('/api/v1/user/info', {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          if (infoRes.data.status_msg === "查询成功") setUser(infoRes.data.user);
-        }
+      if (fallbackRes.data.status_msg === "查询成功" && fallbackRes.data.user) {
+        setUser(fallbackRes.data.user);
       }
-    } catch (err) {
-      console.error("加载失败", err);
-    } finally {
-      setLoading(false);
+    } catch (fallbackErr) {
+      console.error("兜底获取用户信息失败：", fallbackErr);
+      alert("获取用户信息失败，请重新登录");
+      // 可选：清除无效 Token，跳转到登录页
+      // localStorage.removeItem('token');
+      // window.location.href = '/login';
     }
-  };
+  } finally {
+    setLoading(false);
+  }
+};
 
   // 删除视频逻辑
   const handleDeleteVideo = async (e, videoId) => {

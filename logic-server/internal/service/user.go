@@ -105,6 +105,14 @@ func (s *UserService) GetUserInfo(ctx context.Context, req *user.UserInfoRequest
 			StatusMsg:  "该用户不存在",
 		}, nil
 	}
+	var avatarUrl string
+	if u.Avatar == "" {
+		avatarUrl = "https://g-video-assets.oss-cn-wuhan-lr.aliyuncs.com/default_avatar.png"
+	} else {
+		avatarUrl = u.Avatar
+	}
+
+	fmt.Printf("🎯 [GetUserInfo] 查询用户 %d 成功\n", req.UserId)
 
 	// 3. 组装返回结果
 	// 注意：这里的 user.User 是你 proto 生成的结构体，不是 model.User
@@ -112,12 +120,11 @@ func (s *UserService) GetUserInfo(ctx context.Context, req *user.UserInfoRequest
 		StatusCode: 0,
 		StatusMsg:  "查询成功",
 		User: &user.User{
-			Id:       u.ID,
-			Username: u.Username,
-			Avatar:   u.Avatar,
-			// 关注数和粉丝数目前没做逻辑，先预留 0
-			FollowCount:   0,
-			FollowerCount: 0,
+			Id:            u.ID,
+			Username:      u.Username,
+			Avatar:        avatarUrl,
+			FollowCount:   u.FollowCount,
+			FollowerCount: u.FollowerCount,
 		},
 	}, nil
 }

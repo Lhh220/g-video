@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/Lhh220/g-video/api/proto/user" // 引入你的 pb 文件
+	"github.com/Lhh220/g-video/logic-server/pkg/utils"
 	"github.com/Lhh220/g-video/web-server/internal/rpc_client"
 	"github.com/gin-gonic/gin"
 )
@@ -66,25 +67,42 @@ func Login(c *gin.Context) {
 }
 
 func GetUserInfo(c *gin.Context) {
-	// 1. 获取 Query 参数
+	// 1. 获取参数
 	userIDStr := c.Query("user_id")
 	authHeader := c.GetHeader("Authorization")
 	token := strings.TrimPrefix(authHeader, "Bearer ")
 
-	// 2. 参数校验
-	if userIDStr == "" || token == "" {
+	// 2. 校验 Token 不能为空
+	if token == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"status_code": 1,
-			"status_msg":  "Missing user_id or token",
+			"status_msg":  "Missing token",
 		})
 		return
 	}
 
-	// 3. 转换 ID 类型
-	uid, err := strconv.ParseInt(userIDStr, 10, 64)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"status_code": 1, "status_msg": "Invalid user_id"})
-		return
+	// 3. 处理 user_id：为空则从 Token 解析当前用户 ID
+	var uid int64
+	if userIDStr == "" {
+		// 从 Token 解析当前登录用户 ID
+		claims, err := utils.ParseToken(token)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"status_code": 1,
+				"status_msg":  "Token 已过期或无效，请重新登录",
+			})
+			return
+		}
+		// 注意：这里要和你 ParseToken 返回的 claims 结构匹配，比如 claims.UserID / claims.ID
+		uid = claims.UserID // 替换成你实际的字段名
+	} else {
+		// 转换传入的 user_id
+		parsedUID, err := strconv.ParseInt(userIDStr, 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"status_code": 1, "status_msg": "Invalid user_id"})
+			return
+		}
+		uid = parsedUID
 	}
 
 	// 4. 发起 RPC 调用
