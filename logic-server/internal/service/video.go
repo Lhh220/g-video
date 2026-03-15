@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/Lhh220/g-video/api/proto/user"
@@ -11,6 +12,7 @@ import (
 	"github.com/Lhh220/g-video/logic-server/internal/model"
 	"github.com/Lhh220/g-video/logic-server/pkg/database"
 	"github.com/Lhh220/g-video/logic-server/pkg/oss"
+	"github.com/Lhh220/g-video/logic-server/pkg/redis"
 	"github.com/Lhh220/g-video/logic-server/pkg/utils"
 	"gorm.io/gorm"
 )
@@ -67,86 +69,73 @@ func (s *VideoService) Feed(ctx context.Context, req *video.FeedRequest) (*video
 		t = time.UnixMilli(req.LatestTime)
 	}
 
-	// 2. 从数据库查询视频
+	// 2. 从数据库查询视频列表 (主表查询暂不建议放 Redis，除非是极热门榜单)
 	err := database.DB.Where("created_at < ?", t).Order("created_at desc").Limit(30).Find(&videos).Error
 	if err != nil {
 		return &video.FeedResponse{StatusCode: 1, StatusMsg: "查询失败"}, nil
 	}
 
-	// --- 核心修复：解析 Token 获取当前登录用户 ID ---
+	// 3. 鉴权并预取社交状态
 	var currentUserID int64 = 0
+	// 使用 Map 存储预取的结果，方便在循环中 O(1) 查找
+	followingMap := make(map[int64]bool)
+	favoriteMap := make(map[int64]bool)
+
 	if req.Token != "" {
-		// 这里调用你项目里解析 JWT Token 的函数
-		// 假设你的函数叫 ParseToken(token string) (int64, error)
 		claims, err := utils.ParseToken(req.Token)
 		if err == nil {
-			currentUserID = claims.UserID // 拿到真实的当前登录用户ID
+			currentUserID = claims.UserID
+			fmt.Printf("🎯 [Feed] 登录用户: %d，准备从 Redis 获取社交状态\n", currentUserID)
+
+			// --- 【核心优化】从 Redis 批量获取该用户关注的人 ---
+			followKey := fmt.Sprintf("user:following:%d", currentUserID)
+			followIDs, _ := redis.RDB.SMembers(ctx, followKey).Result()
+			for _, idStr := range followIDs {
+				id, _ := strconv.ParseInt(idStr, 10, 64)
+				followingMap[id] = true
+			}
+
+			// --- 【核心优化】从 Redis 批量获取该用户点赞过的视频 ---
+			favoriteKey := fmt.Sprintf("user:liked:videos:%d", currentUserID)
+			favIDs, _ := redis.RDB.SMembers(ctx, favoriteKey).Result()
+			for _, idStr := range favIDs {
+				id, _ := strconv.ParseInt(idStr, 10, 64)
+				favoriteMap[id] = true
+			}
 		}
 	}
 
-	// 3. 封装返回数据
 	var videoList []*video.Video
 	var nextTime int64 = time.Now().UnixMilli()
 
+	// 4. 循环封装数据 (现在的循环里不再有任何 follows 和 likes 的 SQL)
 	for _, v := range videos {
-		var userModel model.User
-		database.DB.First(&userModel, v.AuthorID)
-
-		// --- 查询关注状态 ---
-		isFollow := false
-		if req.Token != "" {
-			claims, err := utils.ParseToken(req.Token)
-			if err == nil {
-				currentUserID = claims.UserID
-				// 👈 加这一行，看看控制台打印的是不是 5 (或者你的登录ID)
-				fmt.Printf("🎯 [Feed] 解析 Token 成功，当前登录用户 ID: %d\n", currentUserID)
-			} else {
-				fmt.Printf("⚠️ [Feed] Token 解析失败: %v\n", err)
-			}
+		// 获取作者信息 (优先走 Redis 缓存)
+		authorInfo, err := GetUserWithCache(ctx, v.AuthorID)
+		if err != nil {
+			authorInfo = &user.User{Id: v.AuthorID, Username: "未知用户"}
 		}
 
-		if currentUserID != 0 {
-			var count int64
-			// 使用独立的 tx 句柄查询
-			tx := database.DB.Session(&gorm.Session{})
-			err := tx.Model(&model.Follow{}).
-				Where("user_id = ? AND to_user_id = ?", currentUserID, v.AuthorID).
-				Count(&count).Error
-
-			if err != nil {
-				fmt.Printf("DEBUG: 查询关注表报错: %v\n", err)
-			}
-			isFollow = count > 0
-			fmt.Printf("DEBUG: 最终关注结果: %v\n", isFollow)
-		}
-		//查询点赞状态
-		isFavorite := false
-		if currentUserID != 0 {
-			var count int64
-			// 使用独立的 tx 句柄查询
-			tx := database.DB.Session(&gorm.Session{})
-			err := tx.Model(&model.Like{}).
-				Where("user_id = ? AND video_id = ?", currentUserID, v.ID).
-				Count(&count).Error
-
-			if err != nil {
-				fmt.Printf("DEBUG: 查询点赞表报错: %v\n", err)
-			}
-			isFavorite = count > 0
-			fmt.Printf("DEBUG: 最终点赞结果: %v\n", isFavorite)
-		}
+		// 直接从刚才准备好的 Map 里取状态，无需查数据库
+		isFollow := followingMap[v.AuthorID]
+		isFavorite := favoriteMap[int64(v.ID)]
 
 		videoList = append(videoList, &video.Video{
-			Id:      int64(v.ID),
-			PlayUrl: v.PlayURL,
-			// ... 其他字段保持不变
+			Id:            int64(v.ID),
+			PlayUrl:       v.PlayURL,
+			CoverUrl:      v.CoverURL,
+			Title:         v.Title,
+			FavoriteCount: v.FavoriteCount,
+			CommentCount:  v.CommentCount,
+			IsFavorite:    isFavorite, // ✅ Redis 内存获取
 			Author: &user.User{
-				Id:       v.AuthorID,
-				Username: userModel.Username,
-				Avatar:   userModel.Avatar,
-				IsFollow: isFollow,
+				Id:            authorInfo.Id,
+				Username:      authorInfo.Username,
+				Avatar:        authorInfo.Avatar,
+				FollowCount:   authorInfo.FollowCount,
+				FollowerCount: authorInfo.FollowerCount,
+				IsFollow:      isFollow, // ✅ Redis 内存获取
 			},
-			IsFavorite: isFavorite,
 		})
 		nextTime = v.CreatedAt.UnixMilli()
 	}

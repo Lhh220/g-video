@@ -3,6 +3,7 @@ package service
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/Lhh220/g-video/logic-server/internal/model"
 	"github.com/Lhh220/g-video/logic-server/pkg/database"
 	"github.com/Lhh220/g-video/logic-server/pkg/oss"
+	"github.com/Lhh220/g-video/logic-server/pkg/redis"
 	"github.com/Lhh220/g-video/logic-server/pkg/utils"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -95,6 +97,23 @@ func (s *UserService) GetUserInfo(ctx context.Context, req *user.UserInfoRequest
 			StatusMsg:  "Token 已过期或无效，请重新登录",
 		}, nil
 	}
+	//先查redis
+	cacheKey := fmt.Sprintf("user:info:%d", req.UserId)
+
+	// --- 【同步过程】优先从 Redis 获取 ---
+	// 查询 Redis 是同步的，因为我们需要它的结果来判断是否还要查数据库
+	val, err := redis.RDB.Get(ctx, cacheKey).Result()
+	if err == nil && val != "" {
+		var cachedUser user.User
+		if err := json.Unmarshal([]byte(val), &cachedUser); err == nil {
+			fmt.Printf("🚀 [Cache Hit] 命中缓存，直接返回用户: %d\n", req.UserId)
+			return &user.UserInfoResponse{
+				StatusCode: 0,
+				StatusMsg:  "查询成功(Cached)",
+				User:       &cachedUser,
+			}, nil
+		}
+	}
 
 	// 2. 查询数据库
 	var u model.User
@@ -111,8 +130,24 @@ func (s *UserService) GetUserInfo(ctx context.Context, req *user.UserInfoRequest
 	} else {
 		avatarUrl = u.Avatar
 	}
+	// --- 【异步】写 Redis (👈 补上这一段) ---
+	userInfoForCache := &user.User{
+		Id:            u.ID,
+		Username:      u.Username,
+		Avatar:        avatarUrl,
+		FollowCount:   u.FollowCount,
+		FollowerCount: u.FollowerCount,
+	}
 
-	fmt.Printf("🎯 [GetUserInfo] 查询用户 %d 成功\n", req.UserId)
+	go func(data *user.User) {
+		// 使用 Background 防止主进程返回后 Context 取消导致写入失败
+		jsonData, _ := json.Marshal(data)
+		// 设置 24 小时过期
+		redis.RDB.Set(context.Background(), cacheKey, jsonData, 24*time.Hour)
+		fmt.Printf("📝 [Redis Save] 数据已异步存入 Redis，Key: %s\n", cacheKey)
+	}(userInfoForCache)
+
+	fmt.Printf("🎯 [GetUserInfo] 查询用户 %d 成功 (来自 DB)\n", req.UserId)
 
 	// 3. 组装返回结果
 	// 注意：这里的 user.User 是你 proto 生成的结构体，不是 model.User
@@ -187,9 +222,56 @@ func (s *UserService) UpdateUserInfo(ctx context.Context, req *user.UpdateUserIn
 	if err != nil {
 		return &user.UpdateUserInfoResponse{StatusCode: 1, StatusMsg: "数据库更新失败"}, nil
 	}
+	if err == nil {
+		// 异步删除缓存
+		go func(uid int64) {
+			cacheKey := fmt.Sprintf("user:info:%d", uid)
+			redis.RDB.Del(context.Background(), cacheKey)
+			fmt.Printf("🗑️ [Async Del] 检测到资料更新，异步清理缓存: %d\n", uid)
+		}(claims.UserID)
+	}
 
 	return &user.UpdateUserInfoResponse{
 		StatusCode: 0,
 		StatusMsg:  "修改成功",
 	}, nil
+}
+
+// 这是一个内部辅助函数，逻辑和你之前的 GetUserInfo 一致
+func GetUserWithCache(ctx context.Context, userID int64) (*user.User, error) {
+	cacheKey := fmt.Sprintf("user:info:%d", userID)
+
+	// 1. 查 Redis
+	val, err := redis.RDB.Get(ctx, cacheKey).Result()
+	if err == nil && val != "" {
+		var u user.User
+		if json.Unmarshal([]byte(val), &u) == nil {
+			return &u, nil
+		}
+	}
+
+	// 2. 查数据库 (fallback)
+	var u model.User
+	if err := database.DB.First(&u, userID).Error; err != nil {
+		return nil, err
+	}
+
+	pbUser := &user.User{
+		Id:            u.ID,
+		Username:      u.Username,
+		Avatar:        u.Avatar,
+		FollowCount:   u.FollowCount,
+		FollowerCount: u.FollowerCount,
+	}
+	if pbUser.Avatar == "" {
+		pbUser.Avatar = "https://g-video-assets.oss-cn-wuhan-lr.aliyuncs.com/default_avatar.png"
+	}
+
+	// 3. 异步存回 Redis
+	go func() {
+		data, _ := json.Marshal(pbUser)
+		redis.RDB.Set(context.Background(), cacheKey, data, 24*time.Hour)
+	}()
+
+	return pbUser, nil
 }
