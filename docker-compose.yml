@@ -1,0 +1,117 @@
+version: '3.8'
+
+# 新增：定义共用网络（容器间用容器名互通）
+networks:
+  app-network:
+    driver: bridge
+
+services:
+  # 前端服务
+  frontend:
+    build: ./g-video-web
+    container_name: g-video-frontend
+    ports:
+      - "80:80"
+    restart: always
+    depends_on:
+      - web-srv
+    # 加入共用网络
+    networks:
+      - app-network
+
+  # 业务逻辑服务（gRPC）
+  logic-srv:
+    build: 
+      context: ./
+      dockerfile: logic-server/Dockerfile
+    container_name: g-video-logic
+    restart: always
+    environment:
+      # ✅ 用容器名 mysql 代替 127.0.0.1，容器间互通
+      - DB_DSN=root:123456@tcp(mysql:3306)/g_video?charset=utf8mb4&parseTime=True&loc=Local
+      - REDIS_ADDR=redis:6379
+      - MQ_URL=amqp://guest:guest@rabbitmq:5672/
+      # 新增：给 logic-srv 暴露 gRPC 端口（如果需要）
+      - GRPC_PORT=50051
+    ports:
+      - "50051:50051" # 暴露 gRPC 端口，方便本地调试
+    # ✅ 核心新增：启动命令指定配置文件路径（解决找不到配置的关键）
+    command: ["./logic_srv", "--config", "/app/configs/config.yaml"]
+    depends_on:
+      # ✅ 等待 MySQL/Redis/MQ 启动完成再启动
+      - mysql
+      - redis
+      - rabbitmq
+    networks:
+      - app-network
+
+  # API 网关服务（HTTP）
+  web-srv:
+    build: 
+      context: ./
+      dockerfile: web-server/Dockerfile
+    container_name: g-video-web
+    ports:
+      - "8080:8080"
+    restart: always
+    environment:
+      # ✅ 告诉 web-srv logic-srv 的地址（容器名 + gRPC 端口）
+      - LOGIC_SRV_ADDR=logic-srv:50051
+    depends_on:
+      - logic-srv
+    networks:
+      - app-network
+
+  # 数据库（修复端口冲突 + 数据持久化）
+  mysql:
+    image: mysql:8.0
+    container_name: g-video-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: "123456"
+      MYSQL_DATABASE: "g_video"
+      # 新增：解决 MySQL 8.0 密码认证问题
+      MYSQL_AUTHENTICATION_PLUGIN: "mysql_native_password"
+    ports:
+      # ✅ 改为 3307:3306，避免宿主机 3306 端口被占用
+      - "3307:3306"
+    # 新增：数据卷持久化，容器删除数据不丢
+    volumes:
+      - mysql-data:/var/lib/mysql
+    # 新增：启动参数，解决编码/时区问题
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    restart: always
+    networks:
+      - app-network
+
+  # 缓存（数据持久化）
+  redis:
+    image: redis:alpine
+    container_name: g-video-redis
+    ports:
+      - "6379:6379"
+    # 新增：数据卷持久化
+    volumes:
+      - redis-data:/data
+    restart: always
+    networks:
+      - app-network
+
+  # 消息队列（数据持久化）
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: g-video-mq
+    ports:
+      - "5672:5672"     # MQ 服务端口
+      - "15672:15672"   # 管理界面端口（访问 http://localhost:15672，账号密码 guest/guest）
+    # 新增：数据卷持久化
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    restart: always
+    networks:
+      - app-network
+
+# 新增：定义数据卷，持久化数据库/缓存/MQ 数据
+volumes:
+  mysql-data:
+  redis-data:
+  rabbitmq-data:

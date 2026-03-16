@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom'; // 新增：导入路由跳转
 import EditProfileModal from '../components/EditProfileModal';
 import VideoPlayerModal from '../components/VideoPlayerModal';
 
@@ -9,6 +10,13 @@ const Profile = () => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate(); // 新增：初始化路由跳转
+
+  // 新增：返回登录页方法
+  const handleGoToLogin = () => {
+    localStorage.removeItem('token'); // 清空无效token
+    navigate('/login', { replace: true }); // 跳登录页，禁止返回
+  };
 
   // 获取数据
 const fetchProfileData = async () => {
@@ -95,6 +103,25 @@ const fetchProfileData = async () => {
   useEffect(() => { fetchProfileData(); }, []);
 
   if (loading) return <div className="text-zinc-500 p-20 text-center">加载中...</div>;
+
+  // 未登录状态：显示返回登录按钮
+  if (!user) {
+    return (
+      <div className="flex-1 h-screen flex flex-col items-center justify-center bg-black text-white p-8">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold mb-2">未登录</h1>
+          <p className="text-zinc-500">请先登录后查看个人主页</p>
+        </div>
+        {/* 新增：返回登录按钮 */}
+        <button
+          onClick={handleGoToLogin}
+          className="px-8 py-3 bg-blue-600 hover:bg-blue-700 rounded-full text-sm font-bold transition-all"
+        >
+          返回登录
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 h-screen overflow-y-auto bg-black text-white p-8 custom-scrollbar relative">

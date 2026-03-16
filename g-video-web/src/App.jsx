@@ -2,12 +2,12 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Home from './pages/Home';
-import Follow from './pages/Follow'; // 1. 引入新创建的关注页面
-import AuthRoute from './components/AuthRoute';
+import Follow from './pages/Follow';
+// 注意：这里要导入两个组件（AuthRoute + GuestRoute）
+import { AuthRoute, GuestRoute } from './components/AuthRoute'; 
 import Sidebar from './components/Sidebar';
 import Profile from './pages/Profile';
 
-// 布局组件
 const MainLayout = ({ children }) => (
   <div className="flex h-screen w-full bg-black overflow-hidden">
     <Sidebar /> 
@@ -21,11 +21,19 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* --- 公开路由 --- */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        {/* 1. 登录/注册页：用 GuestRoute 保护 */}
+        <Route path="/login" element={
+          <GuestRoute>
+            <Login />
+          </GuestRoute>
+        } />
+        <Route path="/register" element={
+          <GuestRoute>
+            <Register />
+          </GuestRoute>
+        } />
         
-        {/* --- 受保护路由：首页 --- */}
+        {/* 2. 需登录的页面：用 AuthRoute 保护 */}
         <Route path="/" element={
           <AuthRoute>
             <MainLayout>
@@ -33,8 +41,6 @@ function App() {
             </MainLayout>
           </AuthRoute>
         } />
-
-        {/* 2. 新增受保护路由：关注页 */}
         <Route path="/follow" element={
           <AuthRoute>
             <MainLayout>
@@ -42,18 +48,13 @@ function App() {
             </MainLayout>
           </AuthRoute>
         } />
-
-        {/* 3. 个人页占位（以后你也可以像 Home 一样把它独立成组件） */}
         <Route path="/profile" element={
           <AuthRoute>
             <MainLayout>
-  
-                <Profile />
-              
+              <Profile />
             </MainLayout>
           </AuthRoute>
         } />
-
       </Routes>
     </Router>
   );
