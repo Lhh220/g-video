@@ -72,3 +72,69 @@ func DeleteFileByURL(fileURL string) error {
 
 	return Bucket.DeleteObject(objectKey)
 }
+
+// ========== 大文件分片上传 (Multipart Upload) ==========
+
+// InitMultipartUpload 初始化一个分片上传会话，返回 uploadID
+func InitMultipartUpload(objectKey string) (string, error) {
+	imur, err := Bucket.InitiateMultipartUpload(objectKey)
+	if err != nil {
+		return "", err
+	}
+	return imur.UploadID, nil
+}
+
+// UploadPart 上传单个分片 (partNumber 从 1 开始，OSS 最大 10000 片)
+func UploadPart(uploadID, objectKey string, partNumber int, reader io.Reader, size int64) error {
+	// 用 uploadID + objectKey 重建会话句柄 (OSS 无状态，服务端只存 ID)
+	imur := oss.InitiateMultipartUploadResult{Key: objectKey, UploadID: uploadID}
+	_, err := Bucket.UploadPart(imur, reader, size, partNumber)
+	return err
+}
+
+// ListUploadedParts 返回该会话已成功上传的分片号，用于断点续传
+func ListUploadedParts(uploadID, objectKey string) ([]int, error) {
+	imur := oss.InitiateMultipartUploadResult{Key: objectKey, UploadID: uploadID}
+
+	// 分页拉全部分片 (单次最多返回 1000 个)
+	var nums []int
+	marker := 0
+	for {
+		res, err := Bucket.ListUploadedParts(imur, oss.PartNumberMarker(marker))
+		if err != nil {
+			return nil, err
+		}
+		for _, p := range res.UploadedParts {
+			nums = append(nums, p.PartNumber)
+		}
+		if !res.IsTruncated || len(res.UploadedParts) == 0 {
+			break
+		}
+		marker = res.UploadedParts[len(res.UploadedParts)-1].PartNumber
+	}
+	return nums, nil
+}
+
+// CompleteMultipartUpload 合并所有分片为最终对象
+func CompleteMultipartUpload(uploadID, objectKey string) error {
+	imur := oss.InitiateMultipartUploadResult{Key: objectKey, UploadID: uploadID}
+
+	// 合并时需带上每个分片的 ETag，以 OSS 侧查询结果为准
+	parts, err := Bucket.ListUploadedParts(imur)
+	if err != nil {
+		return err
+	}
+	uploadParts := make([]oss.UploadPart, 0, len(parts.UploadedParts))
+	for _, p := range parts.UploadedParts {
+		uploadParts = append(uploadParts, oss.UploadPart{PartNumber: p.PartNumber, ETag: p.ETag})
+	}
+
+	_, err = Bucket.CompleteMultipartUpload(imur, uploadParts)
+	return err
+}
+
+// AbortMultipartUpload 放弃会话，清理 OSS 上的孤立分片
+func AbortMultipartUpload(uploadID, objectKey string) error {
+	imur := oss.InitiateMultipartUploadResult{Key: objectKey, UploadID: uploadID}
+	return Bucket.AbortMultipartUpload(imur)
+}

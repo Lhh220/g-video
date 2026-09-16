@@ -279,6 +279,103 @@ func GetPendingList(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// extractToken 从 Authorization 头里提取 token (兼容无 Bearer 前缀)
+func extractToken(c *gin.Context) string {
+	h := c.GetHeader("Authorization")
+	if len(h) > 7 && h[:7] == "Bearer " {
+		return h[7:]
+	}
+	return h
+}
+
+// InitUpload 分片上传第一步：秒传/断点续传判断，返回 upload_id 和已传分片
+func InitUpload(c *gin.Context) {
+	var reqData struct {
+		Filename     string `json:"filename"`
+		FileSize     int64  `json:"file_size"`
+		FileMd5      string `json:"file_md5"`
+		PrevUploadId string `json:"prev_upload_id"`
+	}
+	if err := c.ShouldBindJSON(&reqData); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status_code": 1, "status_msg": "参数格式错误"})
+		return
+	}
+
+	resp, err := rpc_client.VideoClient.InitUpload(c, &video.InitUploadRequest{
+		Token:        extractToken(c),
+		Filename:     reqData.Filename,
+		FileSize:     reqData.FileSize,
+		FileMd5:      reqData.FileMd5,
+		PrevUploadId: reqData.PrevUploadId,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status_code": 1, "status_msg": "RPC调用失败"})
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+// UploadPart 分片上传第二步：上传单个分片
+func UploadPart(c *gin.Context) {
+	uploadID := c.PostForm("upload_id")
+	partNumber, _ := strconv.Atoi(c.PostForm("part_number"))
+	if uploadID == "" || partNumber <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"status_code": 1, "status_msg": "缺少 upload_id 或 part_number"})
+		return
+	}
+
+	_, header, err := c.Request.FormFile("data")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status_code": 1, "status_msg": "无法读取分片数据"})
+		return
+	}
+	fileObj, _ := header.Open()
+	defer fileObj.Close()
+
+	data, err := io.ReadAll(fileObj)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status_code": 1, "status_msg": "读取分片失败"})
+		return
+	}
+
+	resp, err := rpc_client.VideoClient.UploadPart(c, &video.UploadPartRequest{
+		Token:     extractToken(c),
+		UploadId:  uploadID,
+		PartNumber: int32(partNumber),
+		Data:      data,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status_code": 1, "status_msg": "RPC调用失败"})
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+// CompleteUpload 分片上传第三步：合并分片并发布 (秒传时 upload_id 为空)
+func CompleteUpload(c *gin.Context) {
+	var reqData struct {
+		UploadId string `json:"upload_id"`
+		FileMd5  string `json:"file_md5"`
+		Title    string `json:"title"`
+	}
+	if err := c.ShouldBindJSON(&reqData); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status_code": 1, "status_msg": "参数格式错误"})
+		return
+	}
+
+	resp, err := rpc_client.VideoClient.CompleteUpload(c, &video.CompleteUploadRequest{
+		Token:    extractToken(c),
+		UploadId: reqData.UploadId,
+		FileMd5:  reqData.FileMd5,
+		Title:    reqData.Title,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status_code": 1, "status_msg": "RPC调用失败"})
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
 func DeleteVideo(c *gin.Context) {
 	// 1. 鉴权获取当前用户 ID
 	authHeader := c.GetHeader("Authorization")

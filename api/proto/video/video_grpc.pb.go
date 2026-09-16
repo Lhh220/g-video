@@ -26,6 +26,9 @@ const (
 	VideoService_GetPublishList_FullMethodName    = "/video.VideoService/GetPublishList"
 	VideoService_FollowingFeed_FullMethodName     = "/video.VideoService/FollowingFeed"
 	VideoService_ListPendingVideos_FullMethodName = "/video.VideoService/ListPendingVideos"
+	VideoService_InitUpload_FullMethodName        = "/video.VideoService/InitUpload"
+	VideoService_UploadPart_FullMethodName        = "/video.VideoService/UploadPart"
+	VideoService_CompleteUpload_FullMethodName    = "/video.VideoService/CompleteUpload"
 )
 
 // VideoServiceClient is the client API for VideoService service.
@@ -41,6 +44,10 @@ type VideoServiceClient interface {
 	GetPublishList(ctx context.Context, in *PublishListRequest, opts ...grpc.CallOption) (*PublishListResponse, error)
 	FollowingFeed(ctx context.Context, in *FollowingFeedRequest, opts ...grpc.CallOption) (*FollowingFeedResponse, error)
 	ListPendingVideos(ctx context.Context, in *PendingListRequest, opts ...grpc.CallOption) (*PendingListResponse, error)
+	// 大文件分片上传：初始化(秒传/续传判断) → 逐片上传 → 完成
+	InitUpload(ctx context.Context, in *InitUploadRequest, opts ...grpc.CallOption) (*InitUploadResponse, error)
+	UploadPart(ctx context.Context, in *UploadPartRequest, opts ...grpc.CallOption) (*UploadPartResponse, error)
+	CompleteUpload(ctx context.Context, in *CompleteUploadRequest, opts ...grpc.CallOption) (*CompleteUploadResponse, error)
 }
 
 type videoServiceClient struct {
@@ -121,6 +128,36 @@ func (c *videoServiceClient) ListPendingVideos(ctx context.Context, in *PendingL
 	return out, nil
 }
 
+func (c *videoServiceClient) InitUpload(ctx context.Context, in *InitUploadRequest, opts ...grpc.CallOption) (*InitUploadResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(InitUploadResponse)
+	err := c.cc.Invoke(ctx, VideoService_InitUpload_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *videoServiceClient) UploadPart(ctx context.Context, in *UploadPartRequest, opts ...grpc.CallOption) (*UploadPartResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UploadPartResponse)
+	err := c.cc.Invoke(ctx, VideoService_UploadPart_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *videoServiceClient) CompleteUpload(ctx context.Context, in *CompleteUploadRequest, opts ...grpc.CallOption) (*CompleteUploadResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CompleteUploadResponse)
+	err := c.cc.Invoke(ctx, VideoService_CompleteUpload_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // VideoServiceServer is the server API for VideoService service.
 // All implementations must embed UnimplementedVideoServiceServer
 // for forward compatibility.
@@ -134,6 +171,10 @@ type VideoServiceServer interface {
 	GetPublishList(context.Context, *PublishListRequest) (*PublishListResponse, error)
 	FollowingFeed(context.Context, *FollowingFeedRequest) (*FollowingFeedResponse, error)
 	ListPendingVideos(context.Context, *PendingListRequest) (*PendingListResponse, error)
+	// 大文件分片上传：初始化(秒传/续传判断) → 逐片上传 → 完成
+	InitUpload(context.Context, *InitUploadRequest) (*InitUploadResponse, error)
+	UploadPart(context.Context, *UploadPartRequest) (*UploadPartResponse, error)
+	CompleteUpload(context.Context, *CompleteUploadRequest) (*CompleteUploadResponse, error)
 	mustEmbedUnimplementedVideoServiceServer()
 }
 
@@ -164,6 +205,15 @@ func (UnimplementedVideoServiceServer) FollowingFeed(context.Context, *Following
 }
 func (UnimplementedVideoServiceServer) ListPendingVideos(context.Context, *PendingListRequest) (*PendingListResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListPendingVideos not implemented")
+}
+func (UnimplementedVideoServiceServer) InitUpload(context.Context, *InitUploadRequest) (*InitUploadResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method InitUpload not implemented")
+}
+func (UnimplementedVideoServiceServer) UploadPart(context.Context, *UploadPartRequest) (*UploadPartResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UploadPart not implemented")
+}
+func (UnimplementedVideoServiceServer) CompleteUpload(context.Context, *CompleteUploadRequest) (*CompleteUploadResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CompleteUpload not implemented")
 }
 func (UnimplementedVideoServiceServer) mustEmbedUnimplementedVideoServiceServer() {}
 func (UnimplementedVideoServiceServer) testEmbeddedByValue()                      {}
@@ -312,6 +362,60 @@ func _VideoService_ListPendingVideos_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _VideoService_InitUpload_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InitUploadRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VideoServiceServer).InitUpload(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VideoService_InitUpload_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VideoServiceServer).InitUpload(ctx, req.(*InitUploadRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VideoService_UploadPart_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UploadPartRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VideoServiceServer).UploadPart(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VideoService_UploadPart_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VideoServiceServer).UploadPart(ctx, req.(*UploadPartRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VideoService_CompleteUpload_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CompleteUploadRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VideoServiceServer).CompleteUpload(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VideoService_CompleteUpload_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VideoServiceServer).CompleteUpload(ctx, req.(*CompleteUploadRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // VideoService_ServiceDesc is the grpc.ServiceDesc for VideoService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -346,6 +450,18 @@ var VideoService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListPendingVideos",
 			Handler:    _VideoService_ListPendingVideos_Handler,
+		},
+		{
+			MethodName: "InitUpload",
+			Handler:    _VideoService_InitUpload_Handler,
+		},
+		{
+			MethodName: "UploadPart",
+			Handler:    _VideoService_UploadPart_Handler,
+		},
+		{
+			MethodName: "CompleteUpload",
+			Handler:    _VideoService_CompleteUpload_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

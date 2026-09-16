@@ -40,6 +40,10 @@ func main() {
 		videoV1 := apiV1.Group("/video")
 		{
 			videoV1.POST("/publish", handler.PublishVideo)
+			// 大文件分片上传三步协议
+			videoV1.POST("/upload/init", handler.InitUpload)
+			videoV1.POST("/upload/part", handler.UploadPart)
+			videoV1.POST("/upload/complete", handler.CompleteUpload)
 			videoV1.GET("/feed", handler.GetFeed)
 			videoV1.GET("/follow/feed", handler.GetFollowingFeed)
 			videoV1.GET("/publish/list", handler.GetPublishList)

@@ -104,6 +104,52 @@ service VideoService {
     rpc GetPublishList(PublishListRequest) returns (PublishListResponse);
     rpc FollowingFeed(FollowingFeedRequest) returns (FollowingFeedResponse);
     rpc ListPendingVideos(PendingListRequest) returns (PendingListResponse);
+    // 大文件分片上传：初始化(秒传/续传判断) → 逐片上传 → 完成
+    rpc InitUpload(InitUploadRequest) returns (InitUploadResponse);
+    rpc UploadPart(UploadPartRequest) returns (UploadPartResponse);
+    rpc CompleteUpload(CompleteUploadRequest) returns (CompleteUploadResponse);
+}
+
+// --- 分片上传 ---
+message InitUploadRequest {
+    string token = 1;
+    string filename = 2;       // 原文件名，用于取后缀
+    int64 file_size = 3;       // 总字节数
+    string file_md5 = 4;       // 整个文件的 MD5，秒传/续传识别
+    string prev_upload_id = 5; // 断点续传：上次会话的 upload_id，可为空
+}
+
+message InitUploadResponse {
+    int32 status_code = 1;
+    string status_msg = 2;
+    bool uploaded = 3;         // true = 秒传命中，直接调 CompleteUpload 即可
+    string upload_id = 4;      // OSS 分片上传会话 ID
+    repeated int32 existed_parts = 5; // 断点续传：已成功的分片号，客户端跳过
+}
+
+message UploadPartRequest {
+    string token = 1;
+    string upload_id = 2;
+    int32 part_number = 3;     // 从 1 开始
+    bytes data = 4;
+}
+
+message UploadPartResponse {
+    int32 status_code = 1;
+    string status_msg = 2;
+}
+
+message CompleteUploadRequest {
+    string token = 1;
+    string upload_id = 2;      // 秒传时可为空
+    string file_md5 = 3;       // 秒传时必填
+    string title = 4;
+}
+
+message CompleteUploadResponse {
+    int32 status_code = 1;
+    string status_msg = 2;
+    int64 video_id = 3;
 }
 
 // 待审核视频列表 (管理员后台)
