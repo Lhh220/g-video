@@ -70,7 +70,8 @@ func (s *VideoService) Feed(ctx context.Context, req *video.FeedRequest) (*video
 	}
 
 	// 2. 从数据库查询视频列表 (主表查询暂不建议放 Redis，除非是极热门榜单)
-	err := database.DB.Where("created_at < ?", t).Order("created_at desc").Limit(30).Find(&videos).Error
+	// status = 1 才是审核通过的视频，待审(0)/驳回(2)绝不能出现在公共流里
+	err := database.DB.Where("created_at < ? AND status = ?", t, 1).Order("created_at desc").Limit(30).Find(&videos).Error
 	if err != nil {
 		return &video.FeedResponse{StatusCode: 1, StatusMsg: "查询失败"}, nil
 	}
@@ -153,9 +154,18 @@ func (s *VideoService) GetPublishList(ctx context.Context, req *video.PublishLis
 
 	// 1. 根据传入的 user_id 查询该用户的所有视频
 	// 注意：这里不需要用 latest_time 过滤，通常是一次性展示（或按需分页）
-	err := database.DB.Where("author_id = ?", req.UserId).
-		Order("created_at desc").
-		Find(&videoModels).Error
+	// 他人查看时只返回审核通过的作品；作者本人可以看到自己的待审/驳回视频
+	isOwner := false
+	if req.Token != "" {
+		if claims, err := utils.ParseToken(req.Token); err == nil && claims.UserID == req.UserId {
+			isOwner = true
+		}
+	}
+	query := database.DB.Where("author_id = ?", req.UserId)
+	if !isOwner {
+		query = query.Where("status = ?", 1)
+	}
+	err := query.Order("created_at desc").Find(&videoModels).Error
 
 	if err != nil {
 		return &video.PublishListResponse{StatusCode: 1, StatusMsg: "查询列表失败"}, nil
@@ -192,6 +202,16 @@ func (s *VideoService) GetPublishList(ctx context.Context, req *video.PublishLis
 }
 
 func (s *VideoService) AuditVideo(ctx context.Context, req *video.AuditRequest) (*video.AuditResponse, error) {
+	// 驳回时需要抹除云端文件，事务前先取出视频的 OSS 地址
+	var playURL string
+	if req.Action == 2 {
+		var v model.Video
+		if err := database.DB.First(&v, req.VideoId).Error; err != nil {
+			return &video.AuditResponse{StatusCode: 1, StatusMsg: "视频不存在"}, nil
+		}
+		playURL = v.PlayURL
+	}
+
 	// 使用事务包裹整个审核过程
 	err := database.DB.Transaction(func(tx *gorm.DB) error {
 		// 1. 权限校验
@@ -203,13 +223,26 @@ func (s *VideoService) AuditVideo(ctx context.Context, req *video.AuditRequest) 
 			return fmt.Errorf("权限不足，非管理员身份")
 		}
 
-		// 2. 更新 Video 表的状态 (假设字段名为 status)
-		res := tx.Model(&model.Video{}).Where("id = ?", req.VideoId).Update("status", req.Action)
-		if res.Error != nil {
-			return res.Error
-		}
-		if res.RowsAffected == 0 {
-			return fmt.Errorf("视频不存在")
+		if req.Action == 2 {
+			// 2a. 驳回：视频连同点赞、评论从数据库永久抹除
+			res := tx.Unscoped().Where("id = ?", req.VideoId).Delete(&model.Video{})
+			if res.Error != nil {
+				return res.Error
+			}
+			if res.RowsAffected == 0 {
+				return fmt.Errorf("视频不存在")
+			}
+			tx.Unscoped().Where("video_id = ?", req.VideoId).Delete(&model.Like{})
+			tx.Unscoped().Where("video_id = ?", req.VideoId).Delete(&model.Comment{})
+		} else {
+			// 2b. 通过：更新 Video 表的状态为已发布
+			res := tx.Model(&model.Video{}).Where("id = ?", req.VideoId).Update("status", req.Action)
+			if res.Error != nil {
+				return res.Error
+			}
+			if res.RowsAffected == 0 {
+				return fmt.Errorf("视频不存在")
+			}
 		}
 
 		// 3. 写入 AuditLog 审核日志
@@ -229,6 +262,16 @@ func (s *VideoService) AuditVideo(ctx context.Context, req *video.AuditRequest) 
 
 	if err != nil {
 		return &video.AuditResponse{StatusCode: 1, StatusMsg: err.Error()}, nil
+	}
+
+	// 4. 驳回的事务提交后，同步删除 OSS 云端文件
+	if req.Action == 2 && playURL != "" {
+		if err := oss.DeleteFileByURL(playURL); err != nil {
+			return &video.AuditResponse{
+				StatusCode: 1,
+				StatusMsg:  "审核已记录，但云端文件清理失败: " + err.Error(),
+			}, nil
+		}
 	}
 
 	return &video.AuditResponse{
@@ -258,7 +301,8 @@ func (s *VideoService) FollowingFeed(ctx context.Context, req *video.FollowingFe
 	fmt.Printf("DEBUG: 当前用户ID: %v\n", currentUserID)
 	err := database.DB.Table("videos").
 		Joins("JOIN follows ON follows.to_user_id = videos.author_id").
-		Where("follows.user_id = ? ", currentUserID). // 别忘了 status=1 表示审核通过
+		// status = 1 只展示审核通过的视频
+		Where("follows.user_id = ? AND videos.status = ?", currentUserID, 1).
 		Order("videos.created_at DESC").
 		Find(&videos).Error
 
@@ -322,16 +366,15 @@ func (s *VideoService) DeleteVideo(ctx context.Context, req *video.DeleteRequest
 		return &video.DeleteResponse{StatusCode: 1, StatusMsg: "无权删除他人视频"}, nil
 	}
 
-	// 3. 开启事务：删除数据库记录 + 尝试清理 OSS (可选)
+	// 3. 开启事务：物理删除视频记录 + 一并清理点赞、评论，避免孤儿数据
 	err := database.DB.Transaction(func(tx *gorm.DB) error {
-		// 删除视频记录
-		if err := tx.Delete(&videoModel).Error; err != nil {
+		// Unscoped 绕过软删除，做到数据库记录永久移除
+		if err := tx.Unscoped().Delete(&videoModel).Error; err != nil {
 			return err
 		}
 
-		// 还可以顺便删除该视频相关的点赞和评论记录
-		tx.Where("video_id = ?", req.VideoId).Delete(&model.Like{})
-		// tx.Where("video_id = ?", req.VideoId).Delete(&model.Comment{})
+		tx.Unscoped().Where("video_id = ?", req.VideoId).Delete(&model.Like{})
+		tx.Unscoped().Where("video_id = ?", req.VideoId).Delete(&model.Comment{})
 
 		return nil
 	})
@@ -340,9 +383,14 @@ func (s *VideoService) DeleteVideo(ctx context.Context, req *video.DeleteRequest
 		return &video.DeleteResponse{StatusCode: 1, StatusMsg: "数据库操作失败"}, nil
 	}
 
-	// 4. (可选) 异步清理 OSS 文件，避免浪费空间
-	// 需在 oss 包中实现 DeleteFile(objectName string)
-	// go oss.DeleteFile(videoModel.PlayURL)
+	// 4. 数据库删除成功后，同步删除 OSS 云端文件，确保存储空间不浪费
+	if err := oss.DeleteFileByURL(videoModel.PlayURL); err != nil {
+		// 记录已删除，仅云端清理失败：如实告知，方便人工补救
+		return &video.DeleteResponse{
+			StatusCode: 1,
+			StatusMsg:  "记录已删除，但云端文件清理失败: " + err.Error(),
+		}, nil
+	}
 
 	return &video.DeleteResponse{StatusCode: 0, StatusMsg: "删除成功"}, nil
 }

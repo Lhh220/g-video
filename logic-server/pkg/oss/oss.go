@@ -3,6 +3,7 @@ package oss
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/Lhh220/g-video/logic-server/internal/config"
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
@@ -53,4 +54,21 @@ func UploadFile(objectName string, reader io.Reader) (string, error) {
 		objectName)
 
 	return url, nil
+}
+
+// DeleteFileByURL 根据完整访问 URL 删除 OSS 上的文件
+// fileURL: UploadFile 返回的 URL (格式: https://bucket.endpoint/objectName)
+func DeleteFileByURL(fileURL string) error {
+	prefix := fmt.Sprintf("https://%s.%s/",
+		config.GlobalConfig.OSS.BucketName,
+		config.GlobalConfig.OSS.Endpoint)
+
+	if !strings.HasPrefix(fileURL, prefix) {
+		return fmt.Errorf("无法从 URL 中识别对象路径: %s", fileURL)
+	}
+
+	// 去掉域名前缀，并剔除可能携带的查询参数 (如封面的 ?x-oss-process=...)
+	objectKey := strings.SplitN(strings.TrimPrefix(fileURL, prefix), "?", 2)[0]
+
+	return Bucket.DeleteObject(objectKey)
 }

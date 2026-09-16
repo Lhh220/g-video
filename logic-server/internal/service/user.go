@@ -30,14 +30,17 @@ func (s *UserService) Register(ctx context.Context, req *user.RegisterRequest) (
 	}
 
 	// 2. 密码加密 (不要存明文！)
-	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return &user.RegisterResponse{StatusCode: 400, StatusMsg: "密码处理失败"}, nil
+	}
 	// 3. 生成默认头像 URL
 	defaultAvatar := "https://g-video-assets.oss-cn-wuhan-lr.aliyuncs.com/default_avatar.png"
 	// 3. 写入数据库
 	newUser := model.User{
 		Username: req.Username,
 		Password: string(hashedPassword),
-		Role:     req.Role, // 将请求中的身份存入数据库
+		Role:     0, // 安全：注册一律为普通用户，管理员由内部指定，绝不信任客户端传入的 role
 		Avatar:   defaultAvatar,
 	}
 	if err := database.DB.Create(&newUser).Error; err != nil {
