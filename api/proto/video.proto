@@ -103,4 +103,20 @@ service VideoService {
     rpc AuditVideo(AuditRequest) returns (AuditResponse);
     rpc GetPublishList(PublishListRequest) returns (PublishListResponse);
     rpc FollowingFeed(FollowingFeedRequest) returns (FollowingFeedResponse);
+    rpc ListPendingVideos(PendingListRequest) returns (PendingListResponse);
+}
+
+// 待审核视频列表 (管理员后台)
+message PendingListRequest {
+    int64 admin_id = 1;
+    string token = 2;
+    int32 page = 3;      // 页码，从 1 开始
+    int32 page_size = 4; // 每页数量
+}
+
+message PendingListResponse {
+    int32 status_code = 1;
+    string status_msg = 2;
+    repeated Video video_list = 3;
+    int64 total = 4;
 }

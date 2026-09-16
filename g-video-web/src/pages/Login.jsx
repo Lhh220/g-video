@@ -5,7 +5,6 @@ import axios from 'axios';
 const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('user');
   const navigate = useNavigate();
 
 const handleLogin = async () => {
@@ -14,13 +13,10 @@ const handleLogin = async () => {
       return;
     }
 
-    const roleNum = role === 'admin' ? 1 : 0; 
-
     try {
       const res = await axios.post('/api/v1/user/login', {
         username,
-        password,
-        role: roleNum
+        password
       });
 
       // 诊断：打印看看 res.data 到底长什么样
@@ -28,23 +24,23 @@ const handleLogin = async () => {
 
       // 修改判断逻辑：只要后端传回了 token，就代表登录成功
       if (res.data.token || res.data.status_code === 0) {
-        
-        // 强制存储
+
+        // 强制存储 (role 来自后端 JWT 对应的真实身份，而非前端自选)
         localStorage.setItem('token', res.data.token);
         localStorage.setItem('user_id', res.data.user_id);
-        localStorage.setItem('role', roleNum);
+        localStorage.setItem('role', res.data.role ?? 0);
 
         console.log("验证存储结果:", localStorage.getItem('token'));
 
         alert("登录成功！");
-        
+
         // 延迟跳转，确保存储生效
         setTimeout(() => {
           navigate('/');
         }, 100);
-        
+
       } else {
-        alert(res.data.status_msg || "登录失败：账号密码或角色错误");
+        alert(res.data.status_msg || "登录失败：账号或密码错误");
       }
     } catch (err) {
       console.error("请求发生错误:", err);
@@ -91,35 +87,6 @@ const handleLogin = async () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
-            </div>
-          </div>
-
-          {/* 角色 */}
-          <div className="flex justify-center mb-8">
-            <div className="flex items-center gap-12 text-white text-xl">
-              <span className="text-2xl font-medium">角色：</span>
-              <label className="flex items-center gap-3 cursor-pointer hover:text-purple-300 transition">
-                <input
-                  type="radio"
-                  name="role"
-                  value="admin"
-                  checked={role === 'admin'}
-                  onChange={(e) => setRole(e.target.value)}
-                  className="w-5 h-5"
-                />
-                管理员
-              </label>
-              <label className="flex items-center gap-3 cursor-pointer hover:text-purple-300 transition">
-                <input
-                  type="radio"
-                  name="role"
-                  value="user"
-                  checked={role === 'user'}
-                  onChange={(e) => setRole(e.target.value)}
-                  className="w-5 h-5"
-                />
-                用户
-              </label>
             </div>
           </div>
 

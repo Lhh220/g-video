@@ -19,12 +19,13 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	VideoService_Feed_FullMethodName           = "/video.VideoService/Feed"
-	VideoService_PublishVideo_FullMethodName   = "/video.VideoService/PublishVideo"
-	VideoService_DeleteVideo_FullMethodName    = "/video.VideoService/DeleteVideo"
-	VideoService_AuditVideo_FullMethodName     = "/video.VideoService/AuditVideo"
-	VideoService_GetPublishList_FullMethodName = "/video.VideoService/GetPublishList"
-	VideoService_FollowingFeed_FullMethodName  = "/video.VideoService/FollowingFeed"
+	VideoService_Feed_FullMethodName              = "/video.VideoService/Feed"
+	VideoService_PublishVideo_FullMethodName      = "/video.VideoService/PublishVideo"
+	VideoService_DeleteVideo_FullMethodName       = "/video.VideoService/DeleteVideo"
+	VideoService_AuditVideo_FullMethodName        = "/video.VideoService/AuditVideo"
+	VideoService_GetPublishList_FullMethodName    = "/video.VideoService/GetPublishList"
+	VideoService_FollowingFeed_FullMethodName     = "/video.VideoService/FollowingFeed"
+	VideoService_ListPendingVideos_FullMethodName = "/video.VideoService/ListPendingVideos"
 )
 
 // VideoServiceClient is the client API for VideoService service.
@@ -39,6 +40,7 @@ type VideoServiceClient interface {
 	AuditVideo(ctx context.Context, in *AuditRequest, opts ...grpc.CallOption) (*AuditResponse, error)
 	GetPublishList(ctx context.Context, in *PublishListRequest, opts ...grpc.CallOption) (*PublishListResponse, error)
 	FollowingFeed(ctx context.Context, in *FollowingFeedRequest, opts ...grpc.CallOption) (*FollowingFeedResponse, error)
+	ListPendingVideos(ctx context.Context, in *PendingListRequest, opts ...grpc.CallOption) (*PendingListResponse, error)
 }
 
 type videoServiceClient struct {
@@ -109,6 +111,16 @@ func (c *videoServiceClient) FollowingFeed(ctx context.Context, in *FollowingFee
 	return out, nil
 }
 
+func (c *videoServiceClient) ListPendingVideos(ctx context.Context, in *PendingListRequest, opts ...grpc.CallOption) (*PendingListResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PendingListResponse)
+	err := c.cc.Invoke(ctx, VideoService_ListPendingVideos_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // VideoServiceServer is the server API for VideoService service.
 // All implementations must embed UnimplementedVideoServiceServer
 // for forward compatibility.
@@ -121,6 +133,7 @@ type VideoServiceServer interface {
 	AuditVideo(context.Context, *AuditRequest) (*AuditResponse, error)
 	GetPublishList(context.Context, *PublishListRequest) (*PublishListResponse, error)
 	FollowingFeed(context.Context, *FollowingFeedRequest) (*FollowingFeedResponse, error)
+	ListPendingVideos(context.Context, *PendingListRequest) (*PendingListResponse, error)
 	mustEmbedUnimplementedVideoServiceServer()
 }
 
@@ -148,6 +161,9 @@ func (UnimplementedVideoServiceServer) GetPublishList(context.Context, *PublishL
 }
 func (UnimplementedVideoServiceServer) FollowingFeed(context.Context, *FollowingFeedRequest) (*FollowingFeedResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method FollowingFeed not implemented")
+}
+func (UnimplementedVideoServiceServer) ListPendingVideos(context.Context, *PendingListRequest) (*PendingListResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListPendingVideos not implemented")
 }
 func (UnimplementedVideoServiceServer) mustEmbedUnimplementedVideoServiceServer() {}
 func (UnimplementedVideoServiceServer) testEmbeddedByValue()                      {}
@@ -278,6 +294,24 @@ func _VideoService_FollowingFeed_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _VideoService_ListPendingVideos_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PendingListRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VideoServiceServer).ListPendingVideos(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VideoService_ListPendingVideos_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VideoServiceServer).ListPendingVideos(ctx, req.(*PendingListRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // VideoService_ServiceDesc is the grpc.ServiceDesc for VideoService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -308,6 +342,10 @@ var VideoService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "FollowingFeed",
 			Handler:    _VideoService_FollowingFeed_Handler,
+		},
+		{
+			MethodName: "ListPendingVideos",
+			Handler:    _VideoService_ListPendingVideos_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

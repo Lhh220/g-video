@@ -833,6 +833,143 @@ func (x *FollowingFeedResponse) GetNextTime() int64 {
 	return 0
 }
 
+// 待审核视频列表 (管理员后台)
+type PendingListRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AdminId       int64                  `protobuf:"varint,1,opt,name=admin_id,json=adminId,proto3" json:"admin_id,omitempty"`
+	Token         string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
+	Page          int32                  `protobuf:"varint,3,opt,name=page,proto3" json:"page,omitempty"`                         // 页码，从 1 开始
+	PageSize      int32                  `protobuf:"varint,4,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"` // 每页数量
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PendingListRequest) Reset() {
+	*x = PendingListRequest{}
+	mi := &file_api_proto_video_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PendingListRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PendingListRequest) ProtoMessage() {}
+
+func (x *PendingListRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_video_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PendingListRequest.ProtoReflect.Descriptor instead.
+func (*PendingListRequest) Descriptor() ([]byte, []int) {
+	return file_api_proto_video_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *PendingListRequest) GetAdminId() int64 {
+	if x != nil {
+		return x.AdminId
+	}
+	return 0
+}
+
+func (x *PendingListRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *PendingListRequest) GetPage() int32 {
+	if x != nil {
+		return x.Page
+	}
+	return 0
+}
+
+func (x *PendingListRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+type PendingListResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	StatusCode    int32                  `protobuf:"varint,1,opt,name=status_code,json=statusCode,proto3" json:"status_code,omitempty"`
+	StatusMsg     string                 `protobuf:"bytes,2,opt,name=status_msg,json=statusMsg,proto3" json:"status_msg,omitempty"`
+	VideoList     []*Video               `protobuf:"bytes,3,rep,name=video_list,json=videoList,proto3" json:"video_list,omitempty"`
+	Total         int64                  `protobuf:"varint,4,opt,name=total,proto3" json:"total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PendingListResponse) Reset() {
+	*x = PendingListResponse{}
+	mi := &file_api_proto_video_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PendingListResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PendingListResponse) ProtoMessage() {}
+
+func (x *PendingListResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_video_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PendingListResponse.ProtoReflect.Descriptor instead.
+func (*PendingListResponse) Descriptor() ([]byte, []int) {
+	return file_api_proto_video_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *PendingListResponse) GetStatusCode() int32 {
+	if x != nil {
+		return x.StatusCode
+	}
+	return 0
+}
+
+func (x *PendingListResponse) GetStatusMsg() string {
+	if x != nil {
+		return x.StatusMsg
+	}
+	return ""
+}
+
+func (x *PendingListResponse) GetVideoList() []*Video {
+	if x != nil {
+		return x.VideoList
+	}
+	return nil
+}
+
+func (x *PendingListResponse) GetTotal() int64 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
 var File_api_proto_video_proto protoreflect.FileDescriptor
 
 const file_api_proto_video_proto_rawDesc = "" +
@@ -910,7 +1047,20 @@ const file_api_proto_video_proto_rawDesc = "" +
 	"status_msg\x18\x02 \x01(\tR\tstatusMsg\x12+\n" +
 	"\n" +
 	"video_list\x18\x03 \x03(\v2\f.video.VideoR\tvideoList\x12\x1b\n" +
-	"\tnext_time\x18\x04 \x01(\x03R\bnextTime2\x88\x03\n" +
+	"\tnext_time\x18\x04 \x01(\x03R\bnextTime\"v\n" +
+	"\x12PendingListRequest\x12\x19\n" +
+	"\badmin_id\x18\x01 \x01(\x03R\aadminId\x12\x14\n" +
+	"\x05token\x18\x02 \x01(\tR\x05token\x12\x12\n" +
+	"\x04page\x18\x03 \x01(\x05R\x04page\x12\x1b\n" +
+	"\tpage_size\x18\x04 \x01(\x05R\bpageSize\"\x98\x01\n" +
+	"\x13PendingListResponse\x12\x1f\n" +
+	"\vstatus_code\x18\x01 \x01(\x05R\n" +
+	"statusCode\x12\x1d\n" +
+	"\n" +
+	"status_msg\x18\x02 \x01(\tR\tstatusMsg\x12+\n" +
+	"\n" +
+	"video_list\x18\x03 \x03(\v2\f.video.VideoR\tvideoList\x12\x14\n" +
+	"\x05total\x18\x04 \x01(\x03R\x05total2\xd4\x03\n" +
 	"\fVideoService\x12/\n" +
 	"\x04Feed\x12\x12.video.FeedRequest\x1a\x13.video.FeedResponse\x12=\n" +
 	"\fPublishVideo\x12\x15.video.PublishRequest\x1a\x16.video.PublishResponse\x12:\n" +
@@ -918,7 +1068,8 @@ const file_api_proto_video_proto_rawDesc = "" +
 	"\n" +
 	"AuditVideo\x12\x13.video.AuditRequest\x1a\x14.video.AuditResponse\x12G\n" +
 	"\x0eGetPublishList\x12\x19.video.PublishListRequest\x1a\x1a.video.PublishListResponse\x12J\n" +
-	"\rFollowingFeed\x12\x1b.video.FollowingFeedRequest\x1a\x1c.video.FollowingFeedResponseB\x11Z\x0fapi/proto/videob\x06proto3"
+	"\rFollowingFeed\x12\x1b.video.FollowingFeedRequest\x1a\x1c.video.FollowingFeedResponse\x12J\n" +
+	"\x11ListPendingVideos\x12\x19.video.PendingListRequest\x1a\x1a.video.PendingListResponseB\x11Z\x0fapi/proto/videob\x06proto3"
 
 var (
 	file_api_proto_video_proto_rawDescOnce sync.Once
@@ -932,7 +1083,7 @@ func file_api_proto_video_proto_rawDescGZIP() []byte {
 	return file_api_proto_video_proto_rawDescData
 }
 
-var file_api_proto_video_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_api_proto_video_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_api_proto_video_proto_goTypes = []any{
 	(*Video)(nil),                 // 0: video.Video
 	(*PublishRequest)(nil),        // 1: video.PublishRequest
@@ -947,30 +1098,35 @@ var file_api_proto_video_proto_goTypes = []any{
 	(*AuditResponse)(nil),         // 10: video.AuditResponse
 	(*FollowingFeedRequest)(nil),  // 11: video.FollowingFeedRequest
 	(*FollowingFeedResponse)(nil), // 12: video.FollowingFeedResponse
-	(*user.User)(nil),             // 13: user.User
+	(*PendingListRequest)(nil),    // 13: video.PendingListRequest
+	(*PendingListResponse)(nil),   // 14: video.PendingListResponse
+	(*user.User)(nil),             // 15: user.User
 }
 var file_api_proto_video_proto_depIdxs = []int32{
-	13, // 0: video.Video.author:type_name -> user.User
+	15, // 0: video.Video.author:type_name -> user.User
 	0,  // 1: video.FeedResponse.video_list:type_name -> video.Video
 	0,  // 2: video.PublishListResponse.video_list:type_name -> video.Video
 	0,  // 3: video.FollowingFeedResponse.video_list:type_name -> video.Video
-	3,  // 4: video.VideoService.Feed:input_type -> video.FeedRequest
-	1,  // 5: video.VideoService.PublishVideo:input_type -> video.PublishRequest
-	5,  // 6: video.VideoService.DeleteVideo:input_type -> video.DeleteRequest
-	9,  // 7: video.VideoService.AuditVideo:input_type -> video.AuditRequest
-	7,  // 8: video.VideoService.GetPublishList:input_type -> video.PublishListRequest
-	11, // 9: video.VideoService.FollowingFeed:input_type -> video.FollowingFeedRequest
-	4,  // 10: video.VideoService.Feed:output_type -> video.FeedResponse
-	2,  // 11: video.VideoService.PublishVideo:output_type -> video.PublishResponse
-	6,  // 12: video.VideoService.DeleteVideo:output_type -> video.DeleteResponse
-	10, // 13: video.VideoService.AuditVideo:output_type -> video.AuditResponse
-	8,  // 14: video.VideoService.GetPublishList:output_type -> video.PublishListResponse
-	12, // 15: video.VideoService.FollowingFeed:output_type -> video.FollowingFeedResponse
-	10, // [10:16] is the sub-list for method output_type
-	4,  // [4:10] is the sub-list for method input_type
-	4,  // [4:4] is the sub-list for extension type_name
-	4,  // [4:4] is the sub-list for extension extendee
-	0,  // [0:4] is the sub-list for field type_name
+	0,  // 4: video.PendingListResponse.video_list:type_name -> video.Video
+	3,  // 5: video.VideoService.Feed:input_type -> video.FeedRequest
+	1,  // 6: video.VideoService.PublishVideo:input_type -> video.PublishRequest
+	5,  // 7: video.VideoService.DeleteVideo:input_type -> video.DeleteRequest
+	9,  // 8: video.VideoService.AuditVideo:input_type -> video.AuditRequest
+	7,  // 9: video.VideoService.GetPublishList:input_type -> video.PublishListRequest
+	11, // 10: video.VideoService.FollowingFeed:input_type -> video.FollowingFeedRequest
+	13, // 11: video.VideoService.ListPendingVideos:input_type -> video.PendingListRequest
+	4,  // 12: video.VideoService.Feed:output_type -> video.FeedResponse
+	2,  // 13: video.VideoService.PublishVideo:output_type -> video.PublishResponse
+	6,  // 14: video.VideoService.DeleteVideo:output_type -> video.DeleteResponse
+	10, // 15: video.VideoService.AuditVideo:output_type -> video.AuditResponse
+	8,  // 16: video.VideoService.GetPublishList:output_type -> video.PublishListResponse
+	12, // 17: video.VideoService.FollowingFeed:output_type -> video.FollowingFeedResponse
+	14, // 18: video.VideoService.ListPendingVideos:output_type -> video.PendingListResponse
+	12, // [12:19] is the sub-list for method output_type
+	5,  // [5:12] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_api_proto_video_proto_init() }
@@ -984,7 +1140,7 @@ func file_api_proto_video_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_proto_video_proto_rawDesc), len(file_api_proto_video_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

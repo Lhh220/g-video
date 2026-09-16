@@ -242,6 +242,43 @@ func GetFollowingFeed(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// GetPendingList 管理员后台：分页拉取待审核视频列表
+func GetPendingList(c *gin.Context) {
+	authHeader := c.GetHeader("Authorization")
+	var token string
+	if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+		token = authHeader[7:]
+	} else {
+		token = authHeader
+	}
+
+	claims, err := utils.ParseToken(token)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"status_code": 1, "status_msg": "未登录"})
+		return
+	}
+	if claims.Role != 1 {
+		c.JSON(http.StatusForbidden, gin.H{"status_code": 1, "status_msg": "只有管理员有权访问"})
+		return
+	}
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+
+	resp, err := rpc_client.VideoClient.ListPendingVideos(c, &video.PendingListRequest{
+		AdminId:  claims.UserID,
+		Token:    token,
+		Page:     int32(page),
+		PageSize: int32(pageSize),
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status_code": 1, "status_msg": "RPC服务异常"})
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
 func DeleteVideo(c *gin.Context) {
 	// 1. 鉴权获取当前用户 ID
 	authHeader := c.GetHeader("Authorization")

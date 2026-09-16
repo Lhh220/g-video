@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/Lhh220/g-video/logic-server/internal/model" // 换成你实际的包名
-
+	"github.com/Lhh220/g-video/logic-server/internal/model"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -40,4 +40,38 @@ func InitDB(dsn string) {
 	}
 
 	fmt.Println("数据库连接成功并完成自动迁移！")
+}
+
+// EnsureAdmin 启动引导：确保系统存在至少一个管理员账号。
+// 注册接口已禁止指定 role，这是创建管理员的唯一入口。
+func EnsureAdmin(username, password string) {
+	if username == "" || password == "" {
+		fmt.Println("⚠️ 未配置 admin.username/admin.password，跳过管理员引导")
+		return
+	}
+
+	var count int64
+	DB.Model(&model.User{}).Where("username = ?", username).Count(&count)
+	if count > 0 {
+		fmt.Printf("✅ 管理员账号已存在: %s\n", username)
+		return
+	}
+
+	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		log.Printf("管理员密码加密失败: %v", err)
+		return
+	}
+
+	admin := model.User{
+		Username: username,
+		Password: string(hashed),
+		Role:     1,
+		Avatar:   "https://g-video-assets.oss-cn-wuhan-lr.aliyuncs.com/default_avatar.png",
+	}
+	if err := DB.Create(&admin).Error; err != nil {
+		log.Printf("引导创建管理员失败: %v", err)
+		return
+	}
+	fmt.Printf("✅ 已引导创建管理员账号: %s (请尽快修改默认密码)\n", username)
 }

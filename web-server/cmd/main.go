@@ -51,6 +51,7 @@ func main() {
 		apiV1.POST("/comment/action", handler.CommentAction)
 		apiV1.GET("/comment/list", handler.CommentList)
 		apiV1.POST("/admin/audit", handler.AuditVideo)
+		apiV1.GET("/admin/pending/list", handler.GetPendingList)
 
 	}
 

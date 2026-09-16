@@ -23,6 +23,13 @@ const Sidebar = () => {
           <span className="text-4xl">👥</span>
           <span className="text-sm mt-2 font-bold tracking-widest">关注</span>
         </div>
+        {/* 审核入口：仅管理员 (role 来自登录时后端返回的真实身份) */}
+        {Number(localStorage.getItem('role')) === 1 && (
+          <div onClick={() => navigate('/admin')} className={`flex flex-col items-center cursor-pointer transition ${getIconStyle('/admin')}`}>
+            <span className="text-4xl">🛡️</span>
+            <span className="text-sm mt-2 font-bold tracking-widest">审核</span>
+          </div>
+        )}
       </div>
 
       {/* 4. 修改加号按钮的点击事件 */}

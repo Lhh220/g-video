@@ -87,6 +87,7 @@ func (s *UserService) Login(ctx context.Context, req *user.LoginRequest) (*user.
 		StatusMsg:  "登录成功",
 		UserId:     u.ID,
 		Token:      token, // 只有登录才返回 Token
+		Role:       u.Role,
 	}, nil
 }
 
@@ -138,6 +139,7 @@ func (s *UserService) GetUserInfo(ctx context.Context, req *user.UserInfoRequest
 		Id:            u.ID,
 		Username:      u.Username,
 		Avatar:        avatarUrl,
+		Role:          u.Role,
 		FollowCount:   u.FollowCount,
 		FollowerCount: u.FollowerCount,
 	}
@@ -161,6 +163,7 @@ func (s *UserService) GetUserInfo(ctx context.Context, req *user.UserInfoRequest
 			Id:            u.ID,
 			Username:      u.Username,
 			Avatar:        avatarUrl,
+			Role:          u.Role,
 			FollowCount:   u.FollowCount,
 			FollowerCount: u.FollowerCount,
 		},
@@ -263,6 +266,7 @@ func GetUserWithCache(ctx context.Context, userID int64) (*user.User, error) {
 		Id:            u.ID,
 		Username:      u.Username,
 		Avatar:        u.Avatar,
+		Role:          u.Role,
 		FollowCount:   u.FollowCount,
 		FollowerCount: u.FollowerCount,
 	}

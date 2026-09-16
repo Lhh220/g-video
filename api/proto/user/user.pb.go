@@ -119,7 +119,6 @@ type RegisterRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
 	Password      string                 `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
-	Role          int32                  `protobuf:"varint,3,opt,name=role,proto3" json:"role,omitempty"` // 新增：0-用户, 1-管理员
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -166,13 +165,6 @@ func (x *RegisterRequest) GetPassword() string {
 		return x.Password
 	}
 	return ""
-}
-
-func (x *RegisterRequest) GetRole() int32 {
-	if x != nil {
-		return x.Role
-	}
-	return 0
 }
 
 type RegisterResponse struct {
@@ -302,6 +294,7 @@ type LoginResponse struct {
 	StatusMsg     string                 `protobuf:"bytes,2,opt,name=status_msg,json=statusMsg,proto3" json:"status_msg,omitempty"`
 	UserId        int64                  `protobuf:"varint,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	Token         string                 `protobuf:"bytes,4,opt,name=token,proto3" json:"token,omitempty"`
+	Role          int32                  `protobuf:"varint,5,opt,name=role,proto3" json:"role,omitempty"` // 登录用户的真实角色，前端据此展示管理员入口
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -362,6 +355,13 @@ func (x *LoginResponse) GetToken() string {
 		return x.Token
 	}
 	return ""
+}
+
+func (x *LoginResponse) GetRole() int32 {
+	if x != nil {
+		return x.Role
+	}
+	return 0
 }
 
 // 获取用户信息
@@ -628,11 +628,10 @@ const file_api_proto_user_proto_rawDesc = "" +
 	"\ffollow_count\x18\x06 \x01(\x03H\x01R\vfollowCount\x88\x01\x01\x12\x1b\n" +
 	"\tis_follow\x18\a \x01(\bR\bisFollowB\x11\n" +
 	"\x0f_follower_countB\x0f\n" +
-	"\r_follow_count\"]\n" +
+	"\r_follow_count\"I\n" +
 	"\x0fRegisterRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
-	"\bpassword\x18\x02 \x01(\tR\bpassword\x12\x12\n" +
-	"\x04role\x18\x03 \x01(\x05R\x04role\"\x81\x01\n" +
+	"\bpassword\x18\x02 \x01(\tR\bpassword\"\x81\x01\n" +
 	"\x10RegisterResponse\x12\x1f\n" +
 	"\vstatus_code\x18\x01 \x01(\x05R\n" +
 	"statusCode\x12\x1d\n" +
@@ -642,14 +641,15 @@ const file_api_proto_user_proto_rawDesc = "" +
 	"\x05token\x18\x04 \x01(\tR\x05token\"F\n" +
 	"\fLoginRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
-	"\bpassword\x18\x02 \x01(\tR\bpassword\"~\n" +
+	"\bpassword\x18\x02 \x01(\tR\bpassword\"\x92\x01\n" +
 	"\rLoginResponse\x12\x1f\n" +
 	"\vstatus_code\x18\x01 \x01(\x05R\n" +
 	"statusCode\x12\x1d\n" +
 	"\n" +
 	"status_msg\x18\x02 \x01(\tR\tstatusMsg\x12\x17\n" +
 	"\auser_id\x18\x03 \x01(\x03R\x06userId\x12\x14\n" +
-	"\x05token\x18\x04 \x01(\tR\x05token\"@\n" +
+	"\x05token\x18\x04 \x01(\tR\x05token\x12\x12\n" +
+	"\x04role\x18\x05 \x01(\x05R\x04role\"@\n" +
 	"\x0fUserInfoRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x14\n" +
 	"\x05token\x18\x02 \x01(\tR\x05token\"r\n" +

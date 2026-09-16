@@ -352,6 +352,63 @@ func (s *VideoService) FollowingFeed(ctx context.Context, req *video.FollowingFe
 	}, nil
 }
 
+// ListPendingVideos 管理员后台：分页拉取待审核 (status=0) 的视频
+func (s *VideoService) ListPendingVideos(ctx context.Context, req *video.PendingListRequest) (*video.PendingListResponse, error) {
+	// 1. 鉴权：Web 层已拦截非管理员，这里再校验一次做纵深防御
+	var admin model.User
+	if err := database.DB.First(&admin, req.AdminId).Error; err != nil || admin.Role != 1 {
+		return &video.PendingListResponse{StatusCode: 1, StatusMsg: "无管理员权限"}, nil
+	}
+
+	// 2. 分页参数兜底
+	page := int(req.Page)
+	if page <= 0 {
+		page = 1
+	}
+	pageSize := int(req.PageSize)
+	if pageSize <= 0 || pageSize > 50 {
+		pageSize = 20
+	}
+
+	// 3. 总数 + 分页查询，按投稿时间正序 (先投稿先审核)
+	var total int64
+	database.DB.Model(&model.Video{}).Where("status = ?", 0).Count(&total)
+
+	var videos []model.Video
+	if err := database.DB.Where("status = ?", 0).
+		Order("created_at asc").
+		Offset((page - 1) * pageSize).Limit(pageSize).
+		Find(&videos).Error; err != nil {
+		return &video.PendingListResponse{StatusCode: 1, StatusMsg: "查询失败"}, nil
+	}
+
+	// 4. 组装，作者信息走缓存
+	var videoList []*video.Video
+	for _, v := range videos {
+		authorInfo, err := GetUserWithCache(ctx, v.AuthorID)
+		if err != nil {
+			authorInfo = &user.User{Id: v.AuthorID, Username: "未知用户"}
+		}
+		videoList = append(videoList, &video.Video{
+			Id:            int64(v.ID),
+			Title:         v.Title,
+			PlayUrl:       v.PlayURL,
+			CoverUrl:      v.CoverURL,
+			FavoriteCount: v.FavoriteCount,
+			CommentCount:  v.CommentCount,
+			Status:        v.Status,
+			Author:        authorInfo,
+		})
+	}
+
+	return &video.PendingListResponse{
+		StatusCode: 0,
+		StatusMsg:  "success",
+		VideoList:  videoList,
+		Total:      total,
+	}, nil
+}
+
 // DeleteVideo 实现删除视频接口
 func (s *VideoService) DeleteVideo(ctx context.Context, req *video.DeleteRequest) (*video.DeleteResponse, error) {
 	var videoModel model.Video

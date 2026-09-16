@@ -20,7 +20,6 @@ message User {
 message RegisterRequest {
     string username = 1;
     string password = 2;
-    int32 role = 3; // 新增：0-用户, 1-管理员
 }
 message RegisterResponse {
     int32 status_code = 1;
@@ -40,6 +39,7 @@ message LoginResponse {
     string status_msg = 2;
     int64 user_id = 3;
     string token = 4;
+    int32 role = 5; // 登录用户的真实角色，前端据此展示管理员入口
 }
 
 // 获取用户信息

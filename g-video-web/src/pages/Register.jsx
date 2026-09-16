@@ -5,7 +5,6 @@ import axios from 'axios';
 const Register = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('user'); // 默认字符串，发送时转数字
   const navigate = useNavigate();
 
   const handleRegister = async () => {
@@ -14,14 +13,11 @@ const Register = () => {
       return;
     }
 
-    // --- 统一逻辑：把字符串角色转为后端需要的数字 0 或 1 ---
-    const roleNum = role === 'admin' ? 1 : 0;
-
     try {
+      // 注册一律为普通用户，管理员由服务端引导创建
       const res = await axios.post('/api/v1/user/register', {
         username,
-        password,
-        role: roleNum
+        password
       });
 
       if (res.data.status_code === 0) {
@@ -72,35 +68,6 @@ const Register = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
-            </div>
-          </div>
-
-          {/* 角色选择 - Radio样式完全一致 */}
-          <div className="flex justify-center mb-8">
-            <div className="flex items-center gap-12 text-white text-xl">
-              <span className="text-2xl font-medium">身份：</span>
-              <label className="flex items-center gap-3 cursor-pointer hover:text-purple-300 transition">
-                <input
-                  type="radio"
-                  name="role"
-                  value="admin"
-                  checked={role === 'admin'}
-                  onChange={(e) => setRole(e.target.value)}
-                  className="w-5 h-5"
-                />
-                管理员
-              </label>
-              <label className="flex items-center gap-3 cursor-pointer hover:text-purple-300 transition">
-                <input
-                  type="radio"
-                  name="role"
-                  value="user"
-                  checked={role === 'user'}
-                  onChange={(e) => setRole(e.target.value)}
-                  className="w-5 h-5"
-                />
-                普通用户
-              </label>
             </div>
           </div>
 

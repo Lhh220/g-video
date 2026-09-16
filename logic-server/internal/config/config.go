@@ -24,6 +24,13 @@ type Config struct {
 		Password string `mapstructure:"password"`
 		DB       int    `mapstructure:"db"`
 	} `mapstructure:"redis"`
+
+	// 管理员引导账号：注册接口已禁止指定 role，
+	// 管理员只能在服务启动时通过这里自动创建
+	Admin struct {
+		Username string `mapstructure:"username"`
+		Password string `mapstructure:"password"`
+	} `mapstructure:"admin"`
 }
 
 var GlobalConfig Config

@@ -18,3 +18,7 @@ redis:
   addr: "127.0.0.1:6379"
   password: "" # 如果没设密码留空
   db: 0        # 默认使用 0 号库
+# 管理员引导账号 (注册接口禁止指定role，管理员由此自动创建，创建后请改密码)
+admin:
+  username: "admin"
+  password: "admin123"

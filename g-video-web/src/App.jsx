@@ -7,6 +7,7 @@ import Follow from './pages/Follow';
 import { AuthRoute, GuestRoute } from './components/AuthRoute'; 
 import Sidebar from './components/Sidebar';
 import Profile from './pages/Profile';
+import Admin from './pages/Admin';
 
 const MainLayout = ({ children }) => (
   <div className="flex h-screen w-full bg-black overflow-hidden">
@@ -52,6 +53,14 @@ function App() {
           <AuthRoute>
             <MainLayout>
               <Profile />
+            </MainLayout>
+          </AuthRoute>
+        } />
+        {/* 管理员审核后台：仅管理员可见入口，后端同样有权限校验 */}
+        <Route path="/admin" element={
+          <AuthRoute>
+            <MainLayout>
+              <Admin />
             </MainLayout>
           </AuthRoute>
         } />

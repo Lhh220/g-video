@@ -21,6 +21,8 @@ func main() {
 
 	// 2. 初始化数据库 (传入配置文件里的 DSN)
 	database.InitDB(config.GlobalConfig.Database.DSN)
+	// 引导创建管理员账号 (注册接口已禁止指定 role)
+	database.EnsureAdmin(config.GlobalConfig.Admin.Username, config.GlobalConfig.Admin.Password)
 	// 3. 初始化 OSS
 	oss.InitOSS()
 	// 4. 初始化 Redis
