@@ -1,0 +1,18 @@
+# logic-srv / web-srv 的构建上下文是整个仓库根目录，
+# 排除与后端镜像无关的大目录，把上下文从 130MB+ 降到几 MB
+.git
+.github
+docs
+picture
+g-video-web
+
+# 本地产物
+bin
+*.exe
+
+# 文档类
+*.md
+LICENSE
+Makefile
+Dockerfile
+docker-compose.yml

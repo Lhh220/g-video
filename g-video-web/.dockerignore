@@ -1,0 +1,4 @@
+# frontend 镜像构建上下文：排除依赖和本地产物
+# (镜像内会自己 npm install，宿主机的 node_modules 不需要也不应该传进去)
+node_modules
+dist

@@ -38,21 +38,26 @@ services:
     # ✅ 核心新增：启动命令指定配置文件路径（解决找不到配置的关键）
     command: ["./logic_srv", "--config", "/app/configs/config.yaml"]
     depends_on:
-      # ✅ 等待 MySQL/Redis/MQ 启动完成再启动
-      - mysql
-      - redis
-      - rabbitmq
+      # 等待依赖真正“就绪”而不仅仅是容器启动：
+      # MySQL/MQ 初始化都要十几秒，不等 healthcheck 会导致 logic-srv 首次连接被拒
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
     networks:
       - app-network
 
   # API 网关服务（HTTP）
   web-srv:
-    build: 
+    build:
       context: ./
       dockerfile: web-server/Dockerfile
     container_name: g-video-web
     ports:
-      - "8080:8080"
+      # 宿主机 8080 常被本机其他服务占用，对外用 8081
+      - "8081:8080"
     restart: always
     environment:
       # ✅ 告诉 web-srv logic-srv 的地址（容器名 + gRPC 端口）
@@ -80,6 +85,12 @@ services:
     # 新增：启动参数，解决编码/时区问题
     command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     restart: always
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p123456"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 30s
     networks:
       - app-network
 
@@ -101,12 +112,19 @@ services:
     image: rabbitmq:3-management
     container_name: g-video-mq
     ports:
-      - "5672:5672"     # MQ 服务端口
-      - "15672:15672"   # 管理界面端口（访问 http://localhost:15672，账号密码 guest/guest）
+      # 5672 不映射到宿主机：compose 内网通过容器名 rabbitmq:5672 直连即可
+      # (宿主机的 5672/15672 常被其他项目的 MQ 容器占用)
+      - "15674:15672"   # 管理界面 http://localhost:15674 (账号密码 guest/guest)
     # 新增：数据卷持久化
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     restart: always
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 10s
+      retries: 24
+      start_period: 30s
     networks:
       - app-network
 
