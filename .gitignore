@@ -31,8 +31,6 @@ go.work.sum
 # .idea/
 # .vscode/
 
-# 忽略敏感文件
+# 忽略敏感文件 (真实配置含数据库/OSS密钥，只提交 config.yaml.example)
 .env
-logic-server/configs/config.yaml  # 若配置文件包含敏感信息，也可忽略
-
-*.yaml
+logic-server/configs/config.yaml
