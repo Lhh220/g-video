@@ -71,7 +71,10 @@ func processVideoPublish(msg VideoPublishMsg) error {
 		log.Printf("✅ 封面兜底更新成功: %s", coverURL)
 	}
 
-	// 2. 给粉丝发通知 (演示：真实项目查 follows 表写通知表)
+	// 2. 异步切片为 HLS：边下边播、弱网体验好 (无 ffmpeg 时自动跳过)
+	runHLSTranscode(msg.VideoID, msg.VideoURL)
+
+	// 3. 给粉丝发通知 (演示：真实项目查 follows 表写通知表)
 	sendNotificationToFollowers(msg.AuthorID, msg.VideoID)
 
 	return nil

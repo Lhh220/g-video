@@ -133,6 +133,7 @@ func (s *VideoService) Feed(ctx context.Context, req *video.FeedRequest) (*video
 			Id:            int64(v.ID),
 			PlayUrl:       v.PlayURL,
 			CoverUrl:      v.CoverURL,
+			HlsUrl:        v.HLSURL,
 			Title:         v.Title,
 			FavoriteCount: v.FavoriteCount,
 			CommentCount:  v.CommentCount,
@@ -196,6 +197,7 @@ func (s *VideoService) GetPublishList(ctx context.Context, req *video.PublishLis
 			},
 			PlayUrl:       v.PlayURL,
 			CoverUrl:      v.CoverURL,
+			HlsUrl:        v.HLSURL,
 			FavoriteCount: v.FavoriteCount,
 			CommentCount:  v.CommentCount,
 			Title:         v.Title,
@@ -211,13 +213,14 @@ func (s *VideoService) GetPublishList(ctx context.Context, req *video.PublishLis
 
 func (s *VideoService) AuditVideo(ctx context.Context, req *video.AuditRequest) (*video.AuditResponse, error) {
 	// 驳回时需要抹除云端文件，事务前先取出视频的 OSS 地址
-	var playURL string
+	var playURL, hlsURL string
 	if req.Action == 2 {
 		var v model.Video
 		if err := database.DB.First(&v, req.VideoId).Error; err != nil {
 			return &video.AuditResponse{StatusCode: 1, StatusMsg: "视频不存在"}, nil
 		}
 		playURL = v.PlayURL
+		hlsURL = v.HLSURL
 	}
 
 	// 使用事务包裹整个审核过程
@@ -280,6 +283,14 @@ func (s *VideoService) AuditVideo(ctx context.Context, req *video.AuditRequest) 
 				StatusMsg:  "审核已记录，但云端文件清理失败: " + err.Error(),
 			}, nil
 		}
+		if hlsURL != "" {
+			if err := oss.DeletePrefixByHLSURL(hlsURL); err != nil {
+				return &video.AuditResponse{
+					StatusCode: 1,
+					StatusMsg:  "审核已记录，但 HLS 切片清理失败: " + err.Error(),
+				}, nil
+			}
+		}
 	}
 
 	return &video.AuditResponse{
@@ -340,6 +351,7 @@ func (s *VideoService) FollowingFeed(ctx context.Context, req *video.FollowingFe
 			Id:            int64(v.ID),
 			PlayUrl:       v.PlayURL,
 			CoverUrl:      v.CoverURL,
+			HlsUrl:        v.HLSURL,
 			FavoriteCount: v.FavoriteCount,
 			CommentCount:  v.CommentCount,
 			Title:         v.Title,
@@ -402,6 +414,7 @@ func (s *VideoService) ListPendingVideos(ctx context.Context, req *video.Pending
 			Title:         v.Title,
 			PlayUrl:       v.PlayURL,
 			CoverUrl:      v.CoverURL,
+			HlsUrl:        v.HLSURL,
 			FavoriteCount: v.FavoriteCount,
 			CommentCount:  v.CommentCount,
 			Status:        v.Status,
@@ -455,6 +468,15 @@ func (s *VideoService) DeleteVideo(ctx context.Context, req *video.DeleteRequest
 			StatusCode: 1,
 			StatusMsg:  "记录已删除，但云端文件清理失败: " + err.Error(),
 		}, nil
+	}
+	// HLS 切片目录一并清理 (未转码的视频为空，跳过)
+	if videoModel.HLSURL != "" {
+		if err := oss.DeletePrefixByHLSURL(videoModel.HLSURL); err != nil {
+			return &video.DeleteResponse{
+				StatusCode: 1,
+				StatusMsg:  "记录已删除，但 HLS 切片清理失败: " + err.Error(),
+			}, nil
+		}
 	}
 
 	return &video.DeleteResponse{StatusCode: 0, StatusMsg: "删除成功"}, nil

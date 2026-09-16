@@ -127,7 +127,7 @@ func (s *VideoService) CompleteUpload(ctx context.Context, req *video.CompleteUp
 		return &video.CompleteUploadResponse{StatusCode: 1, StatusMsg: "Token无效"}, nil
 	}
 
-	var playURL, coverURL, fileMD5 string
+	var playURL, coverURL, fileMD5, hlsURL string
 
 	if req.UploadId == "" {
 		// --- 秒传：复用已有视频的云上文件 ---
@@ -135,7 +135,7 @@ func (s *VideoService) CompleteUpload(ctx context.Context, req *video.CompleteUp
 		if err := database.DB.Where("file_md5 = ?", req.FileMd5).First(&src).Error; err != nil {
 			return &video.CompleteUploadResponse{StatusCode: 1, StatusMsg: "秒传失败：源文件已不存在，请重新上传"}, nil
 		}
-		playURL, coverURL, fileMD5 = src.PlayURL, src.CoverURL, src.FileMD5
+		playURL, coverURL, fileMD5, hlsURL = src.PlayURL, src.CoverURL, src.FileMD5, src.HLSURL
 	} else {
 		// --- 正常分片：合并 → 生成封面 → 落库 ---
 		sess, err := loadSession(req.UploadId)
@@ -163,6 +163,7 @@ func (s *VideoService) CompleteUpload(ctx context.Context, req *video.CompleteUp
 		PlayURL:  playURL,
 		CoverURL: coverURL,
 		FileMD5:  fileMD5,
+		HLSURL:   hlsURL,
 	}
 	if err := database.DB.Create(&newVideo).Error; err != nil {
 		return &video.CompleteUploadResponse{StatusCode: 1, StatusMsg: "数据库保存失败"}, nil

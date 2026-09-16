@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import HlsVideo from '../components/HlsVideo';
 
 // 管理员审核后台：展示待审核视频，支持通过 / 驳回
 const Admin = () => {
@@ -94,8 +95,8 @@ const Admin = () => {
             className="flex gap-4 bg-zinc-900 border border-zinc-800 rounded-2xl p-4 mb-4"
           >
             {/* 视频预览：审核前先看内容 */}
-            <video
-              src={v.play_url}
+            <HlsVideo
+              video={v}
               poster={v.cover_url}
               controls
               preload="metadata"

@@ -15,6 +15,8 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o /app/logi
 # 第二阶段：运行
 FROM alpine:latest
 WORKDIR /app
+# ffmpeg 供 MQ 消费者做 HLS 切片；ca-certificates 供 HTTPS 访问 OSS
+RUN apk add --no-cache ffmpeg ca-certificates
 # 拷贝二进制文件
 COPY --from=builder /app/logic_srv .
 

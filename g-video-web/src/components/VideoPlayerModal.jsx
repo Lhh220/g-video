@@ -1,4 +1,5 @@
 import React from 'react';
+import HlsVideo from './HlsVideo';
 
 const VideoPlayerModal = ({ video, onClose }) => {
   return (
@@ -13,8 +14,8 @@ const VideoPlayerModal = ({ video, onClose }) => {
 
       {/* 播放器容器 */}
       <div className="relative w-full h-full flex items-center justify-center">
-        <video 
-          src={video.play_url}
+        <HlsVideo
+          video={video}
           className="max-h-full max-w-full shadow-2xl"
           controls
           autoPlay

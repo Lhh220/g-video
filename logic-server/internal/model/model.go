@@ -32,6 +32,7 @@ type Video struct {
 	PlayURL       string         `gorm:"column:play_url;size:255;not null"`
 	CoverURL      string         `gorm:"column:cover_url;size:255"`
 	FileMD5       string         `gorm:"column:file_md5;size:64;index;default:''"` // 文件指纹，秒传去重
+	HLSURL        string         `gorm:"column:hls_url;size:255;default:''"`       // HLS 切片地址 (异步转码生成)
 	FavoriteCount int64          `gorm:"column:favorite_count;default:0"`
 	CommentCount  int64          `gorm:"column:comment_count;default:0"`
 	Status        int32          `gorm:"column:status;default:0"` // 0-待审, 1-通过, 2-拒绝

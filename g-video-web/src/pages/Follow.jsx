@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import CommentDrawer from '../components/CommentDrawer'; // 确保路径正确
+import HlsVideo from '../components/HlsVideo';
 
 const Follow = () => {
   const [videos, setVideos] = useState([]);
@@ -111,10 +112,10 @@ const Follow = () => {
       {currentVideo ? (
         <div className="relative w-[85%] h-[85vh] bg-black rounded-[3rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.5)] border border-white/5 group">
           
-          <video
+          <HlsVideo
             ref={videoRef}
             key={currentVideo.play_url}
-            src={currentVideo.play_url}
+            video={currentVideo}
             className="w-full h-full object-contain cursor-pointer relative z-0"
             autoPlay
             loop

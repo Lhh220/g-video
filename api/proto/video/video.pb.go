@@ -34,6 +34,7 @@ type Video struct {
 	CommentCount  int64                  `protobuf:"varint,7,opt,name=comment_count,json=commentCount,proto3" json:"comment_count,omitempty"`
 	IsFavorite    bool                   `protobuf:"varint,8,opt,name=is_favorite,json=isFavorite,proto3" json:"is_favorite,omitempty"` // 当前登录用户是否点赞
 	Status        int32                  `protobuf:"varint,9,opt,name=status,proto3" json:"status,omitempty"`                           // 0-待审, 1-发布, 2-驳回
+	HlsUrl        string                 `protobuf:"bytes,10,opt,name=hls_url,json=hlsUrl,proto3" json:"hls_url,omitempty"`             // HLS 切片播放地址 (异步转码生成，可能为空)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -129,6 +130,13 @@ func (x *Video) GetStatus() int32 {
 		return x.Status
 	}
 	return 0
+}
+
+func (x *Video) GetHlsUrl() string {
+	if x != nil {
+		return x.HlsUrl
+	}
+	return ""
 }
 
 // 投稿请求 (Web-server处理文件分片后传给Logic)
@@ -1375,7 +1383,7 @@ var File_api_proto_video_proto protoreflect.FileDescriptor
 
 const file_api_proto_video_proto_rawDesc = "" +
 	"\n" +
-	"\x15api/proto/video.proto\x12\x05video\x1a\x14api/proto/user.proto\"\x8e\x02\n" +
+	"\x15api/proto/video.proto\x12\x05video\x1a\x14api/proto/user.proto\"\xa7\x02\n" +
 	"\x05Video\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\"\n" +
 	"\x06author\x18\x02 \x01(\v2\n" +
@@ -1387,7 +1395,9 @@ const file_api_proto_video_proto_rawDesc = "" +
 	"\rcomment_count\x18\a \x01(\x03R\fcommentCount\x12\x1f\n" +
 	"\vis_favorite\x18\b \x01(\bR\n" +
 	"isFavorite\x12\x16\n" +
-	"\x06status\x18\t \x01(\x05R\x06status\"l\n" +
+	"\x06status\x18\t \x01(\x05R\x06status\x12\x17\n" +
+	"\ahls_url\x18\n" +
+	" \x01(\tR\x06hlsUrl\"l\n" +
 	"\x0ePublishRequest\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x12\n" +

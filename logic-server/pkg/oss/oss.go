@@ -3,6 +3,8 @@ package oss
 import (
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/Lhh220/g-video/logic-server/internal/config"
@@ -56,21 +58,51 @@ func UploadFile(objectName string, reader io.Reader) (string, error) {
 	return url, nil
 }
 
-// DeleteFileByURL 根据完整访问 URL 删除 OSS 上的文件
-// fileURL: UploadFile 返回的 URL (格式: https://bucket.endpoint/objectName)
-func DeleteFileByURL(fileURL string) error {
+// URLToObjectKey 从完整访问 URL 中提取对象 Key，失败返回空串
+func URLToObjectKey(fileURL string) string {
 	prefix := fmt.Sprintf("https://%s.%s/",
 		config.GlobalConfig.OSS.BucketName,
 		config.GlobalConfig.OSS.Endpoint)
 
 	if !strings.HasPrefix(fileURL, prefix) {
+		return ""
+	}
+	return strings.SplitN(strings.TrimPrefix(fileURL, prefix), "?", 2)[0]
+}
+
+// DeleteFileByURL 根据完整访问 URL 删除 OSS 上的文件
+// fileURL: UploadFile 返回的 URL (格式: https://bucket.endpoint/objectName)
+func DeleteFileByURL(fileURL string) error {
+	objectKey := URLToObjectKey(fileURL)
+	if objectKey == "" {
 		return fmt.Errorf("无法从 URL 中识别对象路径: %s", fileURL)
 	}
-
-	// 去掉域名前缀，并剔除可能携带的查询参数 (如封面的 ?x-oss-process=...)
-	objectKey := strings.SplitN(strings.TrimPrefix(fileURL, prefix), "?", 2)[0]
-
 	return Bucket.DeleteObject(objectKey)
+}
+
+// DeletePrefixByHLSURL 删除 HLS 播放地址对应的整个切片目录 (m3u8 + 所有 ts 片段)
+func DeletePrefixByHLSURL(hlsURL string) error {
+	key := URLToObjectKey(hlsURL)
+	if key == "" {
+		return fmt.Errorf("无法从 URL 中识别对象路径: %s", hlsURL)
+	}
+	// hls/xxx/index.m3u8 → hls/xxx/
+	dir := filepath.Dir(key)
+	return deletePrefix(dir + "/")
+}
+
+// deletePrefix 枚举并删除指定前缀下的所有对象 (OSS 无目录概念，需逐个删)
+func deletePrefix(prefix string) error {
+	res, err := Bucket.ListObjects(oss.Prefix(prefix))
+	if err != nil {
+		return err
+	}
+	for _, obj := range res.Objects {
+		if err := Bucket.DeleteObject(obj.Key); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ========== 大文件分片上传 (Multipart Upload) ==========
@@ -137,4 +169,31 @@ func CompleteMultipartUpload(uploadID, objectKey string) error {
 func AbortMultipartUpload(uploadID, objectKey string) error {
 	imur := oss.InitiateMultipartUploadResult{Key: objectKey, UploadID: uploadID}
 	return Bucket.AbortMultipartUpload(imur)
+}
+
+// DownloadToFile 把 OSS 对象下载到本地文件 (转码用)
+func DownloadToFile(objectKey, filePath string) error {
+	return Bucket.GetObjectToFile(objectKey, filePath)
+}
+
+// UploadDir 把本地目录下所有文件上传到指定前缀，返回 m3u8 的访问 URL
+// 约定：目录内必须存在 index.m3u8，切片用相对路径互相引用，前缀上传后依然成立
+func UploadDir(dir, prefix string) (string, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return "", err
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		if err := Bucket.PutObjectFromFile(prefix+e.Name(), filepath.Join(dir, e.Name())); err != nil {
+			return "", err
+		}
+	}
+
+	return fmt.Sprintf("https://%s.%s/%sindex.m3u8",
+		config.GlobalConfig.OSS.BucketName,
+		config.GlobalConfig.OSS.Endpoint,
+		prefix), nil
 }
