@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net"
 
@@ -31,6 +32,9 @@ func main() {
 	// 5. 初始化 RabbitMQ 并启动消费者 (未配置/不可达时自动降级，不影响主服务)
 	mq.InitRabbitMQ(config.GlobalConfig.RabbitMQ.URL)
 	mq.RunConsumers()
+
+	// 6. 启动点赞计数落库协程 (Redis 增量每 5 秒合并进 MySQL)
+	go service.RunFavoriteCounterFlusher(context.Background())
 
 	fmt.Println("Logic-Server 基础设施启动成功！")
 	lis, err := net.Listen("tcp", ":50051")

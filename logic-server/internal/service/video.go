@@ -117,6 +117,13 @@ func (s *VideoService) Feed(ctx context.Context, req *video.FeedRequest) (*video
 	var videoList []*video.Video
 	var nextTime int64 = time.Now().UnixMilli()
 
+	// 读己之写：把尚未落库的 Redis 计数增量合并进展示值 (一次 MGET，无循环查库)
+	videoIDs := make([]int64, 0, len(videos))
+	for _, v := range videos {
+		videoIDs = append(videoIDs, int64(v.ID))
+	}
+	favoriteDeltaMap := getFavoriteDeltas(ctx, videoIDs)
+
 	// 4. 循环封装数据 (现在的循环里不再有任何 follows 和 likes 的 SQL)
 	for _, v := range videos {
 		// 获取作者信息 (优先走 Redis 缓存)
@@ -135,7 +142,7 @@ func (s *VideoService) Feed(ctx context.Context, req *video.FeedRequest) (*video
 			CoverUrl:      v.CoverURL,
 			HlsUrl:        v.HLSURL,
 			Title:         v.Title,
-			FavoriteCount: v.FavoriteCount,
+			FavoriteCount: v.FavoriteCount + favoriteDeltaMap[int64(v.ID)],
 			CommentCount:  v.CommentCount,
 			IsFavorite:    isFavorite, // ✅ Redis 内存获取
 			Author: &user.User{

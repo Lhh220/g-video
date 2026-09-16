@@ -19,7 +19,9 @@ type SocialService struct {
 }
 
 func (s *SocialService) FavoriteAction(ctx context.Context, req *social.FavoriteRequest) (*social.FavoriteResponse, error) {
-	// 1. 处理数据库事务
+	// 事务只维护 likes 关系行；favorite_count 计数走 Redis 增量 + 定时落库 (高并发削峰)
+	countChanged := false
+
 	err := database.DB.Transaction(func(tx *gorm.DB) error {
 		if req.ActionType == 1 { // 点赞
 			fav := model.Like{UserID: req.UserId, VideoID: req.VideoId}
@@ -31,13 +33,9 @@ func (s *SocialService) FavoriteAction(ctx context.Context, req *social.Favorite
 				return result.Error
 			}
 
-			// 只有在真正插入了新行的情况下，才给视频点赞数 +1
-			// 如果 RowsAffected 为 0，说明之前已经点过赞了，不再重复加数
+			// 只有在真正插入了新行的情况下，才产生计数变化
 			if result.RowsAffected > 0 {
-				if err := tx.Model(&model.Video{}).Where("id = ?", req.VideoId).
-					UpdateColumn("favorite_count", gorm.Expr("favorite_count + ?", 1)).Error; err != nil {
-					return err
-				}
+				countChanged = true
 			}
 		} else { // 取消点赞
 			// 删除点赞记录
@@ -45,19 +43,14 @@ func (s *SocialService) FavoriteAction(ctx context.Context, req *social.Favorite
 			if result.Error != nil {
 				return result.Error
 			}
-
-			// 只有在真正删除了行的情况下，才给视频点赞数 -1
 			if result.RowsAffected > 0 {
-				if err := tx.Model(&model.Video{}).Where("id = ?", req.VideoId).
-					UpdateColumn("favorite_count", gorm.Expr("favorite_count - ?", 1)).Error; err != nil {
-					return err
-				}
+				countChanged = true
 			}
 		}
 		return nil
 	})
 
-	// 2. 检查数据库操作结果
+	// 检查数据库操作结果
 	if err != nil {
 		return &social.FavoriteResponse{
 			StatusCode: 1,
@@ -65,21 +58,31 @@ func (s *SocialService) FavoriteAction(ctx context.Context, req *social.Favorite
 		}, nil
 	}
 
-	// 3. --- 【核心改进】无论 DB 是新插还是已存在，强行同步 Redis ---
+	// --- 【核心改进】无论 DB 是新插还是已存在，强行同步 Redis ---
 	// 这样可以确保只要用户点赞了，Redis 里的红心就一定会亮
 	favoriteKey := fmt.Sprintf("user:liked:videos:%d", req.UserId)
 
 	go func() {
 		// 使用 context.Background() 确保主请求结束后协程仍能运行
+		bg := context.Background()
 		if req.ActionType == 1 {
-			redis.RDB.SAdd(context.Background(), favoriteKey, req.VideoId)
+			redis.RDB.SAdd(bg, favoriteKey, req.VideoId)
 			fmt.Printf("✅ [Redis Sync] 确保点赞状态同步: User %d, Video %d\n", req.UserId, req.VideoId)
 		} else {
-			redis.RDB.SRem(context.Background(), favoriteKey, req.VideoId)
+			redis.RDB.SRem(bg, favoriteKey, req.VideoId)
 			fmt.Printf("🗑️ [Redis Sync] 确保取消点赞同步: User %d, Video %d\n", req.UserId, req.VideoId)
 		}
 		// 设置 7 天有效期
-		redis.RDB.Expire(context.Background(), favoriteKey, 7*24*time.Hour)
+		redis.RDB.Expire(bg, favoriteKey, 7*24*time.Hour)
+
+		// 计数增量进 Redis，由 flusher 定时合并进 MySQL
+		if countChanged {
+			delta := int64(1)
+			if req.ActionType == 2 {
+				delta = -1
+			}
+			incrFavoriteDelta(bg, req.VideoId, delta)
+		}
 	}()
 
 	return &social.FavoriteResponse{StatusCode: 0, StatusMsg: "success"}, nil
