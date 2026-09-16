@@ -22,3 +22,7 @@ redis:
 admin:
   username: "admin"
   password: "admin123"
+
+# RabbitMQ (未配置或连不上时自动降级为同步处理，不影响主服务)
+rabbitmq:
+  url: "amqp://guest:guest@127.0.0.1:5672/"

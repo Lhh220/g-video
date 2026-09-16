@@ -8,6 +8,7 @@ import (
 	"github.com/Lhh220/g-video/api/proto/user"
 	"github.com/Lhh220/g-video/api/proto/video"
 	"github.com/Lhh220/g-video/logic-server/internal/config"
+	"github.com/Lhh220/g-video/logic-server/internal/mq"
 	"github.com/Lhh220/g-video/logic-server/internal/service"
 	"github.com/Lhh220/g-video/logic-server/pkg/database"
 	"github.com/Lhh220/g-video/logic-server/pkg/oss"
@@ -27,6 +28,9 @@ func main() {
 	oss.InitOSS()
 	// 4. 初始化 Redis
 	redis.InitRedis() // 新增这一行
+	// 5. 初始化 RabbitMQ 并启动消费者 (未配置/不可达时自动降级，不影响主服务)
+	mq.InitRabbitMQ(config.GlobalConfig.RabbitMQ.URL)
+	mq.RunConsumers()
 
 	fmt.Println("Logic-Server 基础设施启动成功！")
 	lis, err := net.Listen("tcp", ":50051")

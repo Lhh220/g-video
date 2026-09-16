@@ -11,6 +11,7 @@ import (
 	"github.com/Lhh220/g-video/api/proto/video"
 	"github.com/Lhh220/g-video/logic-server/internal/config"
 	"github.com/Lhh220/g-video/logic-server/internal/model"
+	"github.com/Lhh220/g-video/logic-server/internal/mq"
 	"github.com/Lhh220/g-video/logic-server/pkg/database"
 	"github.com/Lhh220/g-video/logic-server/pkg/oss"
 	"github.com/Lhh220/g-video/logic-server/pkg/redis"
@@ -166,6 +167,13 @@ func (s *VideoService) CompleteUpload(ctx context.Context, req *video.CompleteUp
 	if err := database.DB.Create(&newVideo).Error; err != nil {
 		return &video.CompleteUploadResponse{StatusCode: 1, StatusMsg: "数据库保存失败"}, nil
 	}
+
+	// 发布事件进 MQ，由消费者异步扩散，不阻塞用户上传主流程
+	go func() {
+		if err := mq.PublishVideoMessage(int64(newVideo.ID), claims.UserID, playURL); err != nil {
+			fmt.Printf("⚠️ [MQ] 视频发布事件发送失败 (不影响发布结果): %v\n", err)
+		}
+	}()
 
 	return &video.CompleteUploadResponse{StatusCode: 0, StatusMsg: "发布成功", VideoId: int64(newVideo.ID)}, nil
 }
