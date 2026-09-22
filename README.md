@@ -57,3 +57,29 @@
 ## 四、核心流程图
 
 ![核心流程](./picture/核心流程图.png)
+## 七、性能压测
+
+压测环境：Windows 本机 Docker 栈（web/logic 限单容器），MySQL 5300 条视频、251 用户、50 关注关系。
+工具：仓库自带 `tools/bench`（Go 编写，支持并发/时长/分位延迟）。
+
+| 接口 | 优化前 QPS | 优化前 P99 | 优化后 QPS | 优化后 P99 |
+|------|-----------|-----------|-----------|-----------|
+| GET /video/follow/feed（关注流，返回300条） | 8.6 | 762ms | **474** | **77ms** |
+| GET /video/feed（首页流，返回30条） | 631 | 167ms | **949** | **98ms** |
+| POST /favorite/action（点赞） | — | — | 1386 | 35ms |
+
+关键优化：
+
+1. **关注流 N+1 消除**（QPS ×55，P99 -90%）：原实现循环内每个视频查一次作者+一次点赞计数，
+   300 条视频 = 600 次数据库往返；改为两次 `IN` 批量预取 + 内存 Map 组装，循环内零 SQL。
+2. **Feed 复合索引**（QPS +50%）：`(status, created_at)` 复合索引覆盖"状态过滤+时间倒序"查询，
+   消除全表 filesort。
+3. **点赞计数写合并**：Redis 增量 + 每 5 秒批量落库，单次点赞仅 1 次关系行写入。
+
+复现方式：
+
+```bash
+python tools/seed/gen_seed.py <bcrypt哈希> > seed.sql     # 造数（哈希用 tools/seed/pwdhash 生成）
+go run ./tools/token 100000                              # 生成压测用户 JWT
+go run ./tools/bench -url http://localhost:8081/api/v1/video/feed -c 50 -d 15s
+```

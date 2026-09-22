@@ -7,8 +7,15 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 )
 
-// 定义一个密钥，实际生产建议放入 config.yaml
+// 定义一个密钥，生产环境通过 config.yaml / 环境变量注入覆盖
 var jwtSecret = []byte("g-video-project-secret-key-2026")
+
+// SetSecret 运行时覆盖 JWT 密钥 (logic 从配置读取，web 从环境变量读取)
+func SetSecret(secret string) {
+	if secret != "" {
+		jwtSecret = []byte(secret)
+	}
+}
 
 // Claims 定义 JWT 载荷中包含的信息
 type Claims struct {
