@@ -10,7 +10,10 @@
 |          | 用户登录           | `POST`            | `/user/login`        | ❌        | 返回 Token                   |
 |          | 获取用户信息       | `GET`             | `/user/info`         | ✅        | 获取基础资料                 |
 |          | 更新用户信息       | `PUT`             | `/user/update/:id`   | ✅        | 更新个人用户信息             |
-| **视频** | 发布视频           | `POST`            | `/video/publish`     | ✅        | `multipart/form-data`        |
+| **视频** | 发布视频           | `POST`            | `/video/publish`     | ✅        | `multipart/form-data`，小文件直传 |
+|          | 初始化分片上传     | `POST`            | `/video/upload/init`| ✅        | 秒传/断点续传判断 |
+|          | 上传分片           | `POST`            | `/video/upload/part`| ✅        | 5MB/片，`multipart/form-data` |
+|          | 完成上传并发布     | `POST`            | `/video/upload/complete` | ✅   | 合并分片/秒传落库 |
 |          | 视频 Feed 流       | `GET`             | `/video/feed`        | ❌/✅      | 游客/登录均可                |
 |          | 关注用户视频Feed流 | `GET`             | `/video/follow/feed` | ✅        | 只返回该用户关注的人发的视频 |
 |          | 获取用户作品列表   | `GET`             | `/video/list`        | ✅        | 获取指定用户作品列表         |
@@ -21,6 +24,20 @@
 |          | 删除评论           | `DELETE`          | `/comment/:id`       | ✅        | 仅本人可删                   |
 |          | 查看该视频评论     | `GET`             | `/comment/list`      | ✅        | 查看该视频所有的评论         |
 | **审核** | 管理员审核         | `POST`            | `/admin/audit`       | ✅        | **限 role=1 权限**           |
+|          | 待审核视频列表     | `GET`             | `/admin/pending/list`| ✅        | 分页，限 role=1              |
+
+## 1.1 分片上传协议（大文件）
+
+三步协议，支持秒传与断点续传：
+
+1. `POST /video/upload/init` — JSON: `{filename, file_size, file_md5, prev_upload_id?}`
+   - 库中已有相同 `file_md5` → 返回 `uploaded: true`（秒传，直接跳到第 3 步）
+   - 携带上次的 `prev_upload_id` → 返回 `existed_parts`（已传分片号，跳过即可）
+   - 否则返回新的 `upload_id`
+2. `POST /video/upload/part` — Form: `upload_id, part_number(从1起), data(分片二进制≤8MB)`
+3. `POST /video/upload/complete` — JSON: `{upload_id(秒传留空), file_md5, title}`
+
+约束：扩展名白名单 mp4/mov/avi/mkv/flv/webm/m4v/ts，总大小 ≤ 2GB。
 
 ## 二、用户模块
 
