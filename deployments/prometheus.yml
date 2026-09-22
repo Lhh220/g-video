@@ -1,0 +1,16 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # API 网关：HTTP 请求耗时/QPS (web-srv:8080/metrics)
+  - job_name: g-video-web
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["web-srv:8080"]
+
+  # 业务服务：gRPC 调用耗时/错误码分布 (logic-srv:9091/metrics)
+  - job_name: g-video-logic
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["logic-srv:9091"]

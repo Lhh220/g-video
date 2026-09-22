@@ -4,20 +4,28 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/http"
 
 	"github.com/Lhh220/g-video/api/proto/social"
 	"github.com/Lhh220/g-video/api/proto/user"
 	"github.com/Lhh220/g-video/api/proto/video"
 	"github.com/Lhh220/g-video/logic-server/internal/config"
+	"github.com/Lhh220/g-video/logic-server/internal/interceptors"
 	"github.com/Lhh220/g-video/logic-server/internal/mq"
 	"github.com/Lhh220/g-video/logic-server/internal/service"
 	"github.com/Lhh220/g-video/logic-server/pkg/database"
+	"github.com/Lhh220/g-video/logic-server/pkg/logx"
 	"github.com/Lhh220/g-video/logic-server/pkg/oss"
 	"github.com/Lhh220/g-video/logic-server/pkg/redis"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
 
 func main() {
+	// 0. 结构化日志 (zap)
+	logx.Init(true)
+
 	// 1. 加载配置
 	config.InitConfig()
 
@@ -42,9 +50,19 @@ func main() {
 		panic(fmt.Sprintf("监听端口失败: %v", err))
 	}
 
-	// 3. 创建 gRPC Server 实例
+	// Prometheus 指标端点 (独立小 HTTP 服务，不与 gRPC 抢端口)
+	go func() {
+		mux := http.NewServeMux()
+		mux.Handle("/metrics", promhttp.Handler())
+		if err := http.ListenAndServe(":9091", mux); err != nil {
+			logx.L().Warn("metrics 端点启动失败", zap.Error(err))
+		}
+	}()
+
+	// 3. 创建 gRPC Server：Recovery 兜底 panic，Log 上报访问日志与耗时指标
 	s := grpc.NewServer(
-		grpc.MaxRecvMsgSize(50 * 1024 * 1024),
+		grpc.ChainUnaryInterceptor(interceptors.UnaryRecovery(), interceptors.UnaryLog()),
+		grpc.MaxRecvMsgSize(50*1024*1024),
 	)
 
 	// 4. 注册服务：把你的逻辑关联到 Server 上

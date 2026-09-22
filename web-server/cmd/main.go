@@ -1,31 +1,36 @@
 package main
 
 import (
-	"log"
+	"net/http"
 
-	"github.com/Lhh220/g-video/api/proto/user"
+	"github.com/Lhh220/g-video/logic-server/pkg/logx"
 	"github.com/Lhh220/g-video/web-server/internal/handler"
+	"github.com/Lhh220/g-video/web-server/internal/middleware"
 	"github.com/Lhh220/g-video/web-server/internal/rpc_client"
 	"github.com/gin-gonic/gin"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
-var userClient user.UserServiceClient
-
-func initClient() {
-	// 连接 logic-server 的 50051 端口
-	conn, err := grpc.Dial("127.0.0.1:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Fatalf("无法连接 logic-server: %v", err)
-	}
-	userClient = user.NewUserServiceClient(conn)
-}
-
 func main() {
+	// 结构化日志 (zap)：所有访问日志带 request_id
+	logx.Init(true)
+
 	// 初始化 gRPC 客户端
 	rpc_client.InitRPC()
-	r := gin.Default()
+
+	// gin.New() 不带默认中间件，改用自己的链：
+	// Recovery 兜底 panic，Trace 注入 request_id + 访问日志，Metrics 上报 Prometheus
+	r := gin.New()
+	// gin 1.12 起 Context.Value 默认不委托 request context，
+	// 打开 fallback 后 rpc 拦截器才能从 ctx 里读到 request_id
+	r.ContextWithFallback = true
+	r.Use(gin.Recovery(), middleware.Trace(), middleware.Metrics())
+
+	// Prometheus 抓取端点
+	r.GET("/metrics", gin.WrapH(middleware.MetricsHandler()))
+
+	r.GET("/healthz", func(c *gin.Context) {
+		c.String(http.StatusOK, "ok")
+	})
 
 	// 路由定义
 	apiV1 := r.Group("/api/v1")
