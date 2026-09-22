@@ -26,3 +26,7 @@ admin:
 # RabbitMQ (未配置或连不上时自动降级为同步处理，不影响主服务)
 rabbitmq:
   url: "amqp://guest:guest@127.0.0.1:5672/"
+
+# JWT 签名密钥 (留空则用内置默认值；需与 web-server 的 JWT_SECRET 环境变量一致)
+jwt:
+  secret: "g-video-jwt-secret-2026-please-change"

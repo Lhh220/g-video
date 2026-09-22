@@ -29,6 +29,16 @@ func Register(c *gin.Context) {
 		return
 	}
 
+	// 入参长度校验：防止超长输入拖垮 bcrypt、异常用户名污染数据
+	if l := len(reqData.Username); l < 1 || l > 64 {
+		c.JSON(http.StatusBadRequest, gin.H{"status_code": 1, "status_msg": "用户名长度需在 1-64 之间"})
+		return
+	}
+	if l := len(reqData.Password); l < 6 || l > 64 {
+		c.JSON(http.StatusBadRequest, gin.H{"status_code": 1, "status_msg": "密码长度需在 6-64 之间"})
+		return
+	}
+
 	// 调用 RPC 时使用解析出来的 reqData
 	// 安全：不接收也不转发 role，注册一律为普通用户
 	resp, err := rpc_client.UserClient.Register(c, &user.RegisterRequest{
@@ -48,6 +58,10 @@ func Login(c *gin.Context) {
 	var reqData RegisterRequest
 	if err := c.ShouldBindJSON(&reqData); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"status_msg": "参数格式错误"})
+		return
+	}
+	if len(reqData.Username) > 64 || len(reqData.Password) > 64 {
+		c.JSON(http.StatusBadRequest, gin.H{"status_msg": "用户名或密码过长"})
 		return
 	}
 

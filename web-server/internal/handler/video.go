@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/Lhh220/g-video/api/proto/video" // 替换为你生成的 video 代码路径
 	"github.com/Lhh220/g-video/logic-server/pkg/utils"
@@ -37,6 +39,11 @@ func PublishVideo(c *gin.Context) {
 			"status_code": 1,
 			"status_msg":  "无法读取视频文件: " + err.Error(),
 		})
+		return
+	}
+	// 直传路径同样做扩展名白名单校验 (分片路径在 InitUpload 已校验)
+	if !allowedVideoExts[strings.ToLower(filepath.Ext(header.Filename))] {
+		c.JSON(http.StatusBadRequest, gin.H{"status_code": 1, "status_msg": "不支持的视频格式"})
 		return
 	}
 
@@ -288,6 +295,16 @@ func extractToken(c *gin.Context) string {
 	return h
 }
 
+// 上传文件硬限制
+var (
+	allowedVideoExts = map[string]bool{
+		".mp4": true, ".mov": true, ".avi": true, ".mkv": true,
+		".flv": true, ".webm": true, ".m4v": true, ".ts": true,
+	}
+	maxVideoSize = int64(2 << 30) // 2GB
+	maxPartSize  = 8 << 20        // 单分片 8MB
+)
+
 // InitUpload 分片上传第一步：秒传/断点续传判断，返回 upload_id 和已传分片
 func InitUpload(c *gin.Context) {
 	var reqData struct {
@@ -298,6 +315,20 @@ func InitUpload(c *gin.Context) {
 	}
 	if err := c.ShouldBindJSON(&reqData); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"status_code": 1, "status_msg": "参数格式错误"})
+		return
+	}
+
+	// 入参校验：扩展名白名单 + 大小上限 + 指纹格式，防止恶意文件与异常参数
+	if !allowedVideoExts[strings.ToLower(filepath.Ext(reqData.Filename))] {
+		c.JSON(http.StatusBadRequest, gin.H{"status_code": 1, "status_msg": "不支持的视频格式 (仅限 mp4/mov/avi/mkv/flv/webm/m4v/ts)"})
+		return
+	}
+	if reqData.FileSize <= 0 || reqData.FileSize > maxVideoSize {
+		c.JSON(http.StatusBadRequest, gin.H{"status_code": 1, "status_msg": "视频大小需在 2GB 以内"})
+		return
+	}
+	if len(reqData.FileMd5) != 32 {
+		c.JSON(http.StatusBadRequest, gin.H{"status_code": 1, "status_msg": "文件指纹格式错误"})
 		return
 	}
 
@@ -335,6 +366,10 @@ func UploadPart(c *gin.Context) {
 	data, err := io.ReadAll(fileObj)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status_code": 1, "status_msg": "读取分片失败"})
+		return
+	}
+	if len(data) > maxPartSize {
+		c.JSON(http.StatusRequestEntityTooLarge, gin.H{"status_code": 1, "status_msg": "单个分片超过 8MB 上限"})
 		return
 	}
 

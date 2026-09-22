@@ -17,6 +17,7 @@ import (
 	"github.com/Lhh220/g-video/logic-server/pkg/logx"
 	"github.com/Lhh220/g-video/logic-server/pkg/oss"
 	"github.com/Lhh220/g-video/logic-server/pkg/redis"
+	"github.com/Lhh220/g-video/logic-server/pkg/utils"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -28,6 +29,8 @@ func main() {
 
 	// 1. 加载配置
 	config.InitConfig()
+	// JWT 密钥优先用配置注入，避免密钥硬编码在源码里
+	utils.SetSecret(config.GlobalConfig.JWT.Secret)
 
 	// 2. 初始化数据库 (传入配置文件里的 DSN)
 	database.InitDB(config.GlobalConfig.Database.DSN)

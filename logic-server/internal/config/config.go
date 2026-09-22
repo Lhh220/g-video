@@ -31,6 +31,11 @@ type Config struct {
 		URL string `mapstructure:"url"`
 	} `mapstructure:"rabbitmq"`
 
+	// JWT 签名密钥：留空则使用内置默认值 (仅本地开发)
+	JWT struct {
+		Secret string `mapstructure:"secret"`
+	} `mapstructure:"jwt"`
+
 	// 管理员引导账号：注册接口已禁止指定 role，
 	// 管理员只能在服务启动时通过这里自动创建
 	Admin struct {

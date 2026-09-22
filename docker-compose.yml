@@ -33,6 +33,8 @@ services:
       - MQ_URL=amqp://guest:guest@rabbitmq:5672/
       # 新增：给 logic-srv 暴露 gRPC 端口（如果需要）
       - GRPC_PORT=50051
+      # JWT 密钥：与 web-srv 保持一致 (演示值，部署时请替换)
+      - JWT_SECRET=g-video-jwt-secret-2026-please-change
     ports:
       - "50051:50051" # 暴露 gRPC 端口，方便本地调试
     # ✅ 核心新增：启动命令指定配置文件路径（解决找不到配置的关键）
@@ -62,6 +64,8 @@ services:
     environment:
       # ✅ 告诉 web-srv logic-srv 的地址（容器名 + gRPC 端口）
       - LOGIC_SRV_ADDR=logic-srv:50051
+      # JWT 密钥：与 logic-srv 保持一致 (演示值，部署时请替换)
+      - JWT_SECRET=g-video-jwt-secret-2026-please-change
     depends_on:
       - logic-srv
     networks:
