@@ -83,3 +83,17 @@ func InitRabbitMQ(url string) {
 	Enabled = true
 	logx.L().Info("✅ RabbitMQ 连接成功，video_publish 交换机就绪")
 }
+
+// Close 优雅关闭 MQ 连接 (退出前调用，尽量让在途消息处理完)
+func Close() {
+	if !Enabled {
+		return
+	}
+	if Channel != nil {
+		_ = Channel.Close()
+	}
+	if Conn != nil {
+		_ = Conn.Close()
+	}
+	logx.L().Info("MQ 连接已关闭")
+}

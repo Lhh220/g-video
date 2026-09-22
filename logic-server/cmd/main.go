@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/Lhh220/g-video/api/proto/social"
 	"github.com/Lhh220/g-video/api/proto/user"
@@ -44,8 +47,10 @@ func main() {
 	mq.InitRabbitMQ(config.GlobalConfig.RabbitMQ.URL)
 	mq.RunConsumers()
 
-	// 6. 启动点赞计数落库协程 (Redis 增量每 5 秒合并进 MySQL)
-	go service.RunFavoriteCounterFlusher(context.Background())
+	// 6. 启动点赞计数落库协程 (Redis 增量每 5 秒合并进 MySQL；ctx 取消时退出)
+	rootCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	go service.RunFavoriteCounterFlusher(rootCtx)
 
 	fmt.Println("Logic-Server 基础设施启动成功！")
 	lis, err := net.Listen("tcp", ":50051")
@@ -54,31 +59,48 @@ func main() {
 	}
 
 	// Prometheus 指标端点 (独立小 HTTP 服务，不与 gRPC 抢端口)
-	go func() {
+	metricsSrv := &http.Server{Addr: ":9091", Handler: func() http.Handler {
 		mux := http.NewServeMux()
 		mux.Handle("/metrics", promhttp.Handler())
-		if err := http.ListenAndServe(":9091", mux); err != nil {
+		return mux
+	}()}
+	go func() {
+		if err := metricsSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logx.L().Warn("metrics 端点启动失败", zap.Error(err))
 		}
 	}()
 
-	// 3. 创建 gRPC Server：Recovery 兜底 panic，Log 上报访问日志与耗时指标
+	// 7. 创建 gRPC Server：Recovery 兜底 panic，Log 上报访问日志与耗时指标
 	s := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(interceptors.UnaryRecovery(), interceptors.UnaryLog()),
 		grpc.MaxRecvMsgSize(50*1024*1024),
 	)
 
-	// 4. 注册服务：把你的逻辑关联到 Server 上
-	// 这里的 &service.UserService{} 就是你写的处理注册登录的代码
+	// 8. 注册服务
 	user.RegisterUserServiceServer(s, &service.UserService{})
-	// 注册视频服务
 	video.RegisterVideoServiceServer(s, &service.VideoService{})
-	// 注册社交服务
 	social.RegisterSocialServiceServer(s, &service.SocialService{})
 
-	// 5. 启动！这里会阻塞，不会退出
-	fmt.Println("🚀 Logic-Server 正在端口 :50051 持续监听中...")
-	if err := s.Serve(lis); err != nil {
-		panic(fmt.Sprintf("启动服务失败: %v", err))
-	}
+	// 9. 启动并在收到 SIGINT/SIGTERM 后优雅退出：
+	// 排空在途请求 → 停指标端点 → 关 MQ/Redis
+	go func() {
+		fmt.Println("🚀 Logic-Server 正在端口 :50051 持续监听中...")
+		if err := s.Serve(lis); err != nil {
+			logx.L().Error("gRPC 服务异常退出", zap.Error(err))
+		}
+	}()
+
+	<-rootCtx.Done()
+	logx.L().Info("收到退出信号，开始优雅关闭 (排空在途请求)...")
+
+	s.GracefulStop()
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_ = metricsSrv.Shutdown(shutdownCtx)
+
+	mq.Close()
+	_ = redis.RDB.Close()
+	_ = logx.L().Sync()
+	logx.L().Info("✅ 优雅退出完成")
 }

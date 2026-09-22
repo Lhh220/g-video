@@ -18,6 +18,16 @@ var UserClient user.UserServiceClient
 var VideoClient video.VideoServiceClient
 var SocialClient social.SocialServiceClient
 
+// conn 保留连接引用，退出时统一关闭
+var conn *grpc.ClientConn
+
+// Close 关闭 gRPC 连接 (服务退出前调用)
+func Close() {
+	if conn != nil {
+		_ = conn.Close()
+	}
+}
+
 // injectRequestID 把 web 层的 request_id 塞进 gRPC metadata，logic 层日志可据此串联整条链路
 func injectRequestID(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 	if v, ok := ctx.Value(middleware.RequestIDKey).(string); ok && v != "" {
@@ -35,7 +45,7 @@ func InitRPC() {
 	}
 
 	// 连接 gRPC 服务（地址用变量，适配 Docker/本地）
-	conn, err := grpc.DialContext(context.Background(), addr,
+	c, err := grpc.DialContext(context.Background(), addr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithDefaultCallOptions(grpc.MaxCallSendMsgSize(50*1024*1024)),
 		grpc.WithUnaryInterceptor(injectRequestID),
@@ -43,6 +53,7 @@ func InitRPC() {
 	if err != nil {
 		log.Fatalf("无法连接 Logic-Server: %v", err)
 	}
+	conn = c
 
 	UserClient = user.NewUserServiceClient(conn)
 	VideoClient = video.NewVideoServiceClient(conn)

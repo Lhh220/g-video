@@ -1,8 +1,12 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/Lhh220/g-video/logic-server/pkg/logx"
 	"github.com/Lhh220/g-video/logic-server/pkg/utils"
@@ -10,6 +14,7 @@ import (
 	"github.com/Lhh220/g-video/web-server/internal/middleware"
 	"github.com/Lhh220/g-video/web-server/internal/rpc_client"
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -70,5 +75,24 @@ func main() {
 
 	}
 
-	r.Run(":8080")
+	// 优雅退出：SIGINT/SIGTERM → 排空在途 HTTP 请求 → 关闭 gRPC 连接
+	srv := &http.Server{Addr: ":8080", Handler: r}
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logx.L().Fatal("HTTP 服务异常退出", zap.Error(err))
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	logx.L().Info("收到退出信号，开始优雅关闭 (排空在途请求)...")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	_ = srv.Shutdown(shutdownCtx)
+
+	rpc_client.Close()
+	_ = logx.L().Sync()
+	logx.L().Info("✅ 优雅退出完成")
 }
