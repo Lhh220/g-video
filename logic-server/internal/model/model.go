@@ -35,10 +35,11 @@ type Video struct {
 	HLSURL        string         `gorm:"column:hls_url;size:255;default:''"`       // HLS 切片地址 (异步转码生成)
 	FavoriteCount int64          `gorm:"column:favorite_count;default:0"`
 	CommentCount  int64          `gorm:"column:comment_count;default:0"`
-	Status        int32          `gorm:"column:status;default:0"` // 0-待审, 1-通过, 2-拒绝
-	CreatedAt     time.Time      `gorm:"column:created_at"`
-	UpdatedAt     time.Time      `gorm:"column:updated_at"`
-	DeletedAt     gorm.DeletedAt `gorm:"index"`
+	// 复合索引 (status, created_at)：Feed 流按 "状态=已发布 + 时间倒序" 查询，走索引避免全表 filesort
+	Status    int32          `gorm:"column:status;default:0;index:idx_status_created,priority:1"`
+	CreatedAt time.Time      `gorm:"column:created_at;index:idx_status_created,priority:2"`
+	UpdatedAt time.Time      `gorm:"column:updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index"`
 
 	// 关联字段：属于某个作者
 	Author User `gorm:"foreignKey:AuthorID"`

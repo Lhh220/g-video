@@ -336,24 +336,45 @@ func (s *VideoService) FollowingFeed(ctx context.Context, req *video.FollowingFe
 		return &video.FollowingFeedResponse{StatusCode: 1, StatusMsg: "获取关注流失败"}, nil
 	}
 
-	// 将 model 转换为 proto 格式 (这里通常会封装一个通用转换函数)
+	// 【性能】批量预取作者信息与点赞状态，消除循环内 N+1 查询
+	// 旧实现每个视频要发 2 条 SQL (查作者 + 查点赞计数)，300 条视频就是 600 次数据库往返
+	videoIDs := make([]int64, 0, len(videos))
+	authorIDSet := make(map[int64]struct{}, len(videos))
+	for _, v := range videos {
+		videoIDs = append(videoIDs, int64(v.ID))
+		authorIDSet[v.AuthorID] = struct{}{}
+	}
+	uniqueAuthorIDs := make([]int64, 0, len(authorIDSet))
+	for id := range authorIDSet {
+		uniqueAuthorIDs = append(uniqueAuthorIDs, id)
+	}
+
+	// 一次查出所有涉及作者
+	var authors []model.User
+	database.DB.Where("id IN ?", uniqueAuthorIDs).Find(&authors)
+	authorMap := make(map[int64]*model.User, len(authors))
+	for i := range authors {
+		authorMap[authors[i].ID] = &authors[i]
+	}
+
+	// 一次查出当前用户在这些视频上的点赞记录
+	favoriteMap := make(map[int64]bool, len(videos))
+	if currentUserID != 0 && len(videoIDs) > 0 {
+		var likes []model.Like
+		database.DB.Where("user_id = ? AND video_id IN ?", currentUserID, videoIDs).Find(&likes)
+		for _, l := range likes {
+			favoriteMap[int64(l.VideoID)] = true
+		}
+	}
+
+	// 组装返回 (循环内零 SQL)
 	var protoVideos []*video.Video
 	for _, v := range videos {
-		// 1. 查询作者信息
-		var author model.User
-		database.DB.First(&author, v.AuthorID)
-
-		// 2. 查询点赞状态 (这是修复刷新消失的关键！)
-		var isFavorite bool
-		if currentUserID != 0 {
-			var count int64
-			database.DB.Model(&model.Like{}).
-				Where("user_id = ? AND video_id = ?", currentUserID, v.ID).
-				Count(&count)
-			isFavorite = count > 0
+		author := authorMap[v.AuthorID]
+		if author == nil {
+			author = &model.User{ID: v.AuthorID, Username: "未知用户"}
 		}
 
-		// 3. 封装完整的视频对象
 		protoVideos = append(protoVideos, &video.Video{
 			Id:            int64(v.ID),
 			PlayUrl:       v.PlayURL,
@@ -362,7 +383,7 @@ func (s *VideoService) FollowingFeed(ctx context.Context, req *video.FollowingFe
 			FavoriteCount: v.FavoriteCount,
 			CommentCount:  v.CommentCount,
 			Title:         v.Title,
-			IsFavorite:    isFavorite, // ✅ 加上这个，红心就不会消失了
+			IsFavorite:    favoriteMap[int64(v.ID)], // ✅ 批量预取，红心不会消失
 			Author: &user.User{
 				Id:       int64(author.ID),
 				Username: author.Username,
