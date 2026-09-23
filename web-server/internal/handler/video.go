@@ -104,10 +104,19 @@ func GetFeed(c *gin.Context) {
 		fmt.Sscanf(latestTimeStr, "%d", &latestTime)
 	}
 
-	// 3. 调用 RPC (即便 token 是空的也传过去)
+	// 3. Feed 模式：latest=时间流(默认) / hot=热门流 / mix=推荐流，白名单外一律按 latest
+	mode := c.Query("mode")
+	switch mode {
+	case "hot", "mix", "latest":
+	default:
+		mode = ""
+	}
+
+	// 4. 调用 RPC (即便 token 是空的也传过去)
 	resp, err := rpc_client.VideoClient.Feed(c, &video.FeedRequest{
 		LatestTime: latestTime,
 		Token:      token, // Logic 层解析失败会当做游客处理，不会报错
+		Mode:       mode,
 	})
 
 	if err != nil {

@@ -38,6 +38,7 @@ message PublishResponse {
 message FeedRequest {
     int64 latest_time = 1; // 限制返回视频的最新投稿时间戳
     string token = 2;      // 可选，用于判断用户是否点赞过
+    string mode = 3;       // latest=时间流(默认) / hot=热门流 / mix=推荐流(三路召回)
 }
 
 message FeedResponse {

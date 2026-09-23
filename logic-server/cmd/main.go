@@ -51,6 +51,8 @@ func main() {
 	rootCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	go service.RunFavoriteCounterFlusher(rootCtx)
+	// 7. 热门池预计算协程 (每分钟刷新推荐流的热度 ZSet)
+	go service.RunHotPoolRefresher(rootCtx)
 
 	fmt.Println("Logic-Server 基础设施启动成功！")
 	lis, err := net.Listen("tcp", ":50051")

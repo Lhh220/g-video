@@ -9,25 +9,71 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  // Feed 模式：mix=推荐流(三路召回) / latest=时间流
+  const [feedMode, setFeedMode] = useState('mix');
   const videoRef = useRef(null);
+  // 已加载视频去重 & latest 模式翻页游标 & 加载中防重入
+  const loadedIdsRef = useRef(new Set());
+  const cursorRef = useRef(undefined);
+  const fetchingRef = useRef(false);
 
-  useEffect(() => {
-  const fetchVideos = async () => {
+  const loadFeed = async (mode, append) => {
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
     try {
       const token = localStorage.getItem('token');
-      console.log("🛠️ 当前发送的 Token:", token); // 看看这里是不是 null 或者 "undefined"
-      const config = token ? { headers: { 'Authorization': `Bearer ${token}` } } : {};
-      
+      const params = { mode };
+      // latest 模式用上一批最后一条的时间做游标翻页
+      if (mode === 'latest' && append && cursorRef.current) {
+        params.latest_time = cursorRef.current;
+      }
+      const config = token
+        ? { headers: { 'Authorization': `Bearer ${token}` }, params }
+        : { params };
+
       const res = await axios.get('/api/v1/video/feed', config);
-      setVideos(res.data.video_list || []);
+      const fresh = (res.data.video_list || []).filter(v => !loadedIdsRef.current.has(v.id));
+      fresh.forEach(v => loadedIdsRef.current.add(v.id));
+      if (res.data.next_time) cursorRef.current = res.data.next_time;
+
+      if (append) {
+        setVideos(prev => [...prev, ...fresh]);
+      } else {
+        setVideos(fresh);
+        setCurrentIndex(0);
+      }
       setLoading(false);
     } catch (err) {
       console.error("加载视频失败:", err);
       setLoading(false);
+    } finally {
+      fetchingRef.current = false;
     }
   };
-  fetchVideos();
-}, []);
+
+  useEffect(() => {
+    loadFeed('mix', false);
+  }, []);
+
+  // 快刷到底时自动加载下一批 (推荐流靠服务端已看过过滤返回新内容)
+  useEffect(() => {
+    if (!loading && videos.length > 0 && currentIndex >= videos.length - 2) {
+      loadFeed(feedMode, true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentIndex, videos.length]);
+
+  // 切换推荐/最新
+  const switchMode = (mode) => {
+    if (mode === feedMode) return;
+    setFeedMode(mode);
+    loadedIdsRef.current = new Set();
+    cursorRef.current = undefined;
+    setVideos([]);
+    setCurrentIndex(0);
+    setLoading(true);
+    loadFeed(mode, false);
+  };
 
   // 1. 关注/取关逻辑
   const handleFollow = async (authorId, isFollowed) => {
@@ -197,6 +243,21 @@ const Home = () => {
       ) : (
         <div className="text-gray-500 text-3xl font-bold">未检测到视频流</div>
       )}
+
+      {/* Feed 模式切换：推荐(三路召回) / 最新(时间流) */}
+      <div className="fixed left-44 top-8 z-[100] flex gap-2 bg-black/40 backdrop-blur-md rounded-full p-1 border border-white/10">
+        {[['mix', '🔥 推荐'], ['latest', '🕒 最新']].map(([mode, label]) => (
+          <button
+            key={mode}
+            onClick={() => switchMode(mode)}
+            className={`px-5 py-2 rounded-full text-sm font-bold tracking-widest transition-all ${
+              feedMode === mode ? 'bg-white text-black' : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
       {/* 翻页控制 */}
       <div className="fixed right-10 top-1/2 -translate-y-1/2 flex flex-col gap-12 z-[100]">

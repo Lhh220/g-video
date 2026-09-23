@@ -265,6 +265,7 @@ type FeedRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	LatestTime    int64                  `protobuf:"varint,1,opt,name=latest_time,json=latestTime,proto3" json:"latest_time,omitempty"` // 限制返回视频的最新投稿时间戳
 	Token         string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`                              // 可选，用于判断用户是否点赞过
+	Mode          string                 `protobuf:"bytes,3,opt,name=mode,proto3" json:"mode,omitempty"`                                // latest=时间流(默认) / hot=热门流 / mix=推荐流(三路召回)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -309,6 +310,13 @@ func (x *FeedRequest) GetLatestTime() int64 {
 func (x *FeedRequest) GetToken() string {
 	if x != nil {
 		return x.Token
+	}
+	return ""
+}
+
+func (x *FeedRequest) GetMode() string {
+	if x != nil {
+		return x.Mode
 	}
 	return ""
 }
@@ -1407,11 +1415,12 @@ const file_api_proto_video_proto_rawDesc = "" +
 	"\vstatus_code\x18\x01 \x01(\x05R\n" +
 	"statusCode\x12\x1d\n" +
 	"\n" +
-	"status_msg\x18\x02 \x01(\tR\tstatusMsg\"D\n" +
+	"status_msg\x18\x02 \x01(\tR\tstatusMsg\"X\n" +
 	"\vFeedRequest\x12\x1f\n" +
 	"\vlatest_time\x18\x01 \x01(\x03R\n" +
 	"latestTime\x12\x14\n" +
-	"\x05token\x18\x02 \x01(\tR\x05token\"\x98\x01\n" +
+	"\x05token\x18\x02 \x01(\tR\x05token\x12\x12\n" +
+	"\x04mode\x18\x03 \x01(\tR\x04mode\"\x98\x01\n" +
 	"\fFeedResponse\x12\x1f\n" +
 	"\vstatus_code\x18\x01 \x01(\x05R\n" +
 	"statusCode\x12\x1d\n" +

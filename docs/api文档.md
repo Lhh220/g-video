@@ -93,8 +93,12 @@
 ### 3.2 视频流 (Feed)
 
 - **Path:** `GET /video/feed`
-- **Query:** `latest_time` (可选，限制返回视频的时间戳)
+- **Query:** `latest_time` (可选，时间流翻页游标), `mode` (可选: `latest`=时间流(默认) / `hot`=热门流 / `mix`=推荐流)
 - **Response:** 返回 `video_list` 数组，仅包含 `status=1` (已审核通过) 的视频。
+- **Logic:**
+  - `latest`: 按投稿时间倒序，`latest_time` 游标翻页
+  - `hot`: 读预计算热度 ZSet（`score = (2×赞+3×评+1)/(小时+2)^1.5`，每分钟刷新）
+  - `mix`: 热门(40)+最新(30)+关注(20) 三路召回，关注作者×1.5 加权，同作者打散，已看过过滤(登录用户)
 
 ### 3.3 删除视频 (Delete)
 

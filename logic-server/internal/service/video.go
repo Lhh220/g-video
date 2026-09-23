@@ -69,6 +69,14 @@ func (s *VideoService) PublishVideo(ctx context.Context, req *video.PublishReque
 }
 
 func (s *VideoService) Feed(ctx context.Context, req *video.FeedRequest) (*video.FeedResponse, error) {
+	// 推荐流分发：hot=热门流(预计算ZSet) / mix=推荐流(三路召回) / 空|latest=时间流
+	switch req.Mode {
+	case "hot":
+		return s.hotFeed(ctx, req)
+	case "mix":
+		return s.mixFeed(ctx, req)
+	}
+
 	var videos []model.Video
 
 	// 1. 处理时间锚点
