@@ -250,7 +250,14 @@ func (s *VideoService) AuditVideo(ctx context.Context, req *video.AuditRequest) 
 		}
 
 		if req.Action == 2 {
-			// 2a. 驳回：视频连同点赞、评论从数据库永久抹除
+			// 2a. 驳回：先删点赞/评论子表，再删视频主表
+			// (AutoMigrate 建有外键 fk_likes_video，顺序反了会触发 1451)
+			if res := tx.Unscoped().Where("video_id = ?", req.VideoId).Delete(&model.Like{}); res.Error != nil {
+				return res.Error
+			}
+			if res := tx.Unscoped().Where("video_id = ?", req.VideoId).Delete(&model.Comment{}); res.Error != nil {
+				return res.Error
+			}
 			res := tx.Unscoped().Where("id = ?", req.VideoId).Delete(&model.Video{})
 			if res.Error != nil {
 				return res.Error
@@ -258,8 +265,6 @@ func (s *VideoService) AuditVideo(ctx context.Context, req *video.AuditRequest) 
 			if res.RowsAffected == 0 {
 				return fmt.Errorf("视频不存在")
 			}
-			tx.Unscoped().Where("video_id = ?", req.VideoId).Delete(&model.Like{})
-			tx.Unscoped().Where("video_id = ?", req.VideoId).Delete(&model.Comment{})
 		} else {
 			// 2b. 通过：更新 Video 表的状态为已发布
 			res := tx.Model(&model.Video{}).Where("id = ?", req.VideoId).Update("status", req.Action)
@@ -481,15 +486,18 @@ func (s *VideoService) DeleteVideo(ctx context.Context, req *video.DeleteRequest
 	}
 
 	// 3. 开启事务：物理删除视频记录 + 一并清理点赞、评论，避免孤儿数据
+	// 注意顺序：先删子表 (likes/comments 有外键指向 videos)，再删主表
 	err := database.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Unscoped().Where("video_id = ?", req.VideoId).Delete(&model.Like{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Unscoped().Where("video_id = ?", req.VideoId).Delete(&model.Comment{}).Error; err != nil {
+			return err
+		}
 		// Unscoped 绕过软删除，做到数据库记录永久移除
 		if err := tx.Unscoped().Delete(&videoModel).Error; err != nil {
 			return err
 		}
-
-		tx.Unscoped().Where("video_id = ?", req.VideoId).Delete(&model.Like{})
-		tx.Unscoped().Where("video_id = ?", req.VideoId).Delete(&model.Comment{})
-
 		return nil
 	})
 
