@@ -14,6 +14,8 @@
 |          | 初始化分片上传     | `POST`            | `/video/upload/init`| ✅        | 秒传/断点续传判断 |
 |          | 上传分片           | `POST`            | `/video/upload/part`| ✅        | 5MB/片，`multipart/form-data` |
 |          | 完成上传并发布     | `POST`            | `/video/upload/complete` | ✅   | 合并分片/秒传落库 |
+|          | 签名直传(≤100MB)   | `POST`            | `/video/upload/direct` | ✅     | 签发PUT凭证，浏览器直传OSS |
+|          | 签名直传完成       | `POST`            | `/video/upload/direct/complete` | ✅ | 校验凭证+对象存在后落库 |
 |          | 视频 Feed 流       | `GET`             | `/video/feed`        | ❌/✅      | 游客/登录均可                |
 |          | 关注用户视频Feed流 | `GET`             | `/video/follow/feed` | ✅        | 只返回该用户关注的人发的视频 |
 |          | 获取用户作品列表   | `GET`             | `/video/list`        | ✅        | 获取指定用户作品列表         |
@@ -23,8 +25,9 @@
 |          | 发表评论           | `POST`            | `/comment/action`    | ✅        | 包含评论内容                 |
 |          | 删除评论           | `DELETE`          | `/comment/:id`       | ✅        | 仅本人可删                   |
 |          | 查看该视频评论     | `GET`             | `/comment/list`      | ✅        | 查看该视频所有的评论         |
-| **审核** | 管理员审核         | `POST`            | `/admin/audit`       | ✅        | **限 role=1 权限**           |
+| **审核** | 管理员审核         | `POST`            | `/admin/audit`       | ✅        | **限 role=1 权限**，重复审核幂等 |
 |          | 待审核视频列表     | `GET`             | `/admin/pending/list`| ✅        | 分页，限 role=1              |
+|          | 推荐效果统计       | `GET`             | `/admin/stats`       | ✅        | 分源曝光/点赞数，限 role=1   |
 
 ## 1.1 分片上传协议（大文件）
 
@@ -38,6 +41,17 @@
 3. `POST /video/upload/complete` — JSON: `{upload_id(秒传留空), file_md5, title}`
 
 约束：扩展名白名单 mp4/mov/avi/mkv/flv/webm/m4v/ts，总大小 ≤ 2GB。
+
+签名直传协议（≤100MB 优选通道，字节不过应用服务器）：
+
+1. `POST /video/upload/direct` — JSON: `{filename, file_md5, file_size}`
+   - 相同指纹已存在 → `uploaded: true` + `video_id`（秒传，结束）
+   - 否则返回 `upload_url`(15分钟有效的OSS PUT签名URL) + `upload_token`
+2. 前端 `PUT` 文件到 `upload_url`（Header: `Content-Type: application/octet-stream`）
+3. `POST /video/upload/direct/complete` — JSON: `{upload_token, title}`
+   - 服务端校验凭证归属 + OSS 对象存在后落库
+
+另：`POST /favorite/action` 支持可选 `source=mix|hot|latest` 参数（曝光来源埋点，用于推荐效果统计）。
 
 ## 二、用户模块
 
