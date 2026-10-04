@@ -61,6 +61,17 @@ func RunHotPoolRefresher(ctx context.Context) {
 
 // refreshHotPool 写临时 ZSet 后 RENAME 原子替换：读侧任何时刻都能看到完整热门池
 func refreshHotPool(ctx context.Context) {
+	// 多实例部署时同一周期只有一个实例执行刷新 (重复刷新幂等无害，锁只为省资源；
+	// Redis 异常时降级为本实例照常刷新，保证热门池可用)
+	ok, token, err := redis.TryLock(ctx, "lock:hotpool", 55*time.Second)
+	if err != nil {
+		logx.L().Warn("热门池抢锁失败，降级为本实例直接刷新", zap.Error(err))
+	} else if !ok {
+		return // 其他实例正在刷新
+	} else {
+		defer redis.ReleaseLock(context.Background(), "lock:hotpool", token)
+	}
+
 	var videos []model.Video
 	if err := database.DB.
 		Where("status = ? AND created_at > ?", 1, time.Now().AddDate(0, 0, -hotScanWindowDays)).

@@ -490,6 +490,34 @@ func TestIntegration_HotPoolRefreshAndOrder(t *testing.T) {
 	}
 }
 
+// ---- 用例 6: 分布式锁 (多实例后台任务的互斥基础) ----
+
+func TestIntegration_DistributedLock(t *testing.T) {
+	requireIntegration(t)
+	ctx := context.Background()
+	key := "lock:it:" + itUnique("t")
+
+	ok1, tok1, err := pkgredis.TryLock(ctx, key, 5*time.Second)
+	if err != nil || !ok1 {
+		t.Fatalf("首次抢锁应成功: ok=%v err=%v", ok1, err)
+	}
+	// 持锁期间第二个竞争者(模拟另一实例)不应获得
+	ok2, _, err := pkgredis.TryLock(ctx, key, 5*time.Second)
+	if err != nil {
+		t.Fatalf("二次抢锁调用出错: %v", err)
+	}
+	if ok2 {
+		t.Error("持锁期间其他实例不应获得锁")
+	}
+	// 释放后可重新获得
+	pkgredis.ReleaseLock(ctx, key, tok1)
+	ok3, tok3, err := pkgredis.TryLock(ctx, key, 5*time.Second)
+	if err != nil || !ok3 {
+		t.Fatalf("释放后应可重新抢锁: ok=%v err=%v", ok3, err)
+	}
+	pkgredis.ReleaseLock(ctx, key, tok3)
+}
+
 // ---- 测试内的小工具 ----
 
 func registerReq(username string) *userpb.RegisterRequest {

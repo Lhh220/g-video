@@ -24,6 +24,12 @@ func main() {
 	// JWT 密钥与 logic 侧保持一致 (部署时通过 JWT_SECRET 环境变量注入)
 	utils.SetSecret(os.Getenv("JWT_SECRET"))
 
+	// 注入共享 Redis：限流计数多实例共享；未配置时自动降级单机限流
+	if addr := os.Getenv("REDIS_ADDR"); addr != "" {
+		middleware.SetRateLimitRedis(addr, "", 0)
+		logx.L().Info("限流已接入共享 Redis", zap.String("addr", addr))
+	}
+
 	// 初始化 gRPC 客户端
 	rpc_client.InitRPC()
 

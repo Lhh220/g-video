@@ -9,7 +9,9 @@ import (
 
 	"github.com/Lhh220/g-video/logic-server/internal/model"
 	"github.com/Lhh220/g-video/logic-server/pkg/database"
+	"github.com/Lhh220/g-video/logic-server/pkg/logx"
 	"github.com/Lhh220/g-video/logic-server/pkg/redis"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -75,6 +77,17 @@ func RunFavoriteCounterFlusher(ctx context.Context) {
 }
 
 func flushFavoriteDeltas(ctx context.Context) {
+	// 多实例说明：增量用 GETDEL 原子取走，天然不会重复落库，锁只为减少无效竞争；
+	// Redis 异常时降级为本实例直接执行，数据不能不落库
+	ok, token, err := redis.TryLock(ctx, "lock:favflush", 4*time.Second)
+	if err != nil {
+		logx.L().Warn("计数落库抢锁失败，降级为本实例直接执行", zap.Error(err))
+	} else if !ok {
+		return // 其他实例正在落库
+	} else {
+		defer redis.ReleaseLock(context.Background(), "lock:favflush", token)
+	}
+
 	// 1. 取走 dirty 集合 (之后新来的计数会进入下一轮)
 	ids, err := redis.RDB.SMembers(ctx, favDirtyKey).Result()
 	if err != nil || len(ids) == 0 {

@@ -66,6 +66,8 @@ services:
       - LOGIC_SRV_ADDR=logic-srv:50051
       # JWT 密钥：与 logic-srv 保持一致 (演示值，部署时请替换)
       - JWT_SECRET=g-video-jwt-secret-2026-please-change
+      # 共享 Redis：限流计数多实例共享
+      - REDIS_ADDR=redis:6379
     depends_on:
       - logic-srv
     networks:
