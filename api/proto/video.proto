@@ -112,6 +112,20 @@ service VideoService {
     // 签名直传：后端只签发凭证，文件字节直接 浏览器→OSS，不过应用服务器
     rpc GetDirectUploadURL(DirectUploadURLRequest) returns (DirectUploadURLResponse);
     rpc CompleteDirectUpload(CompleteDirectRequest) returns (CompleteDirectResponse);
+    // 推荐效果统计：各流量来源的曝光/点赞计数 (管理员)
+    rpc GetFeedStats(FeedStatsRequest) returns (FeedStatsResponse);
+}
+
+// --- 推荐效果统计 ---
+message FeedStatsRequest {
+    int64 admin_id = 1;
+}
+
+message FeedStatsResponse {
+    int32 status_code = 1;
+    string status_msg = 2;
+    map<string, int64> expose = 3;   // 来源(mix/hot/latest) -> 曝光数
+    map<string, int64> favorite = 4; // 来源 -> 点赞数
 }
 
 // --- 分片上传 ---

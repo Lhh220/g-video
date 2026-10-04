@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package social;
-option go_package = "./social";
+option go_package = "api/proto/social";
 
 import "api/proto/user.proto";
 
@@ -12,6 +12,7 @@ message FavoriteRequest {
     int64 user_id = 1;
     int64 video_id = 2;
     int32 action_type = 3; // 1-点赞, 2-取消点赞
+    string source = 4;     // 曝光来源 mix/hot/latest，用于推荐效果统计，可空
 }
 
 message FavoriteResponse {

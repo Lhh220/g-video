@@ -31,6 +31,7 @@ const (
 	VideoService_CompleteUpload_FullMethodName       = "/video.VideoService/CompleteUpload"
 	VideoService_GetDirectUploadURL_FullMethodName   = "/video.VideoService/GetDirectUploadURL"
 	VideoService_CompleteDirectUpload_FullMethodName = "/video.VideoService/CompleteDirectUpload"
+	VideoService_GetFeedStats_FullMethodName         = "/video.VideoService/GetFeedStats"
 )
 
 // VideoServiceClient is the client API for VideoService service.
@@ -53,6 +54,8 @@ type VideoServiceClient interface {
 	// 签名直传：后端只签发凭证，文件字节直接 浏览器→OSS，不过应用服务器
 	GetDirectUploadURL(ctx context.Context, in *DirectUploadURLRequest, opts ...grpc.CallOption) (*DirectUploadURLResponse, error)
 	CompleteDirectUpload(ctx context.Context, in *CompleteDirectRequest, opts ...grpc.CallOption) (*CompleteDirectResponse, error)
+	// 推荐效果统计：各流量来源的曝光/点赞计数 (管理员)
+	GetFeedStats(ctx context.Context, in *FeedStatsRequest, opts ...grpc.CallOption) (*FeedStatsResponse, error)
 }
 
 type videoServiceClient struct {
@@ -183,6 +186,16 @@ func (c *videoServiceClient) CompleteDirectUpload(ctx context.Context, in *Compl
 	return out, nil
 }
 
+func (c *videoServiceClient) GetFeedStats(ctx context.Context, in *FeedStatsRequest, opts ...grpc.CallOption) (*FeedStatsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(FeedStatsResponse)
+	err := c.cc.Invoke(ctx, VideoService_GetFeedStats_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // VideoServiceServer is the server API for VideoService service.
 // All implementations must embed UnimplementedVideoServiceServer
 // for forward compatibility.
@@ -203,6 +216,8 @@ type VideoServiceServer interface {
 	// 签名直传：后端只签发凭证，文件字节直接 浏览器→OSS，不过应用服务器
 	GetDirectUploadURL(context.Context, *DirectUploadURLRequest) (*DirectUploadURLResponse, error)
 	CompleteDirectUpload(context.Context, *CompleteDirectRequest) (*CompleteDirectResponse, error)
+	// 推荐效果统计：各流量来源的曝光/点赞计数 (管理员)
+	GetFeedStats(context.Context, *FeedStatsRequest) (*FeedStatsResponse, error)
 	mustEmbedUnimplementedVideoServiceServer()
 }
 
@@ -248,6 +263,9 @@ func (UnimplementedVideoServiceServer) GetDirectUploadURL(context.Context, *Dire
 }
 func (UnimplementedVideoServiceServer) CompleteDirectUpload(context.Context, *CompleteDirectRequest) (*CompleteDirectResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CompleteDirectUpload not implemented")
+}
+func (UnimplementedVideoServiceServer) GetFeedStats(context.Context, *FeedStatsRequest) (*FeedStatsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetFeedStats not implemented")
 }
 func (UnimplementedVideoServiceServer) mustEmbedUnimplementedVideoServiceServer() {}
 func (UnimplementedVideoServiceServer) testEmbeddedByValue()                      {}
@@ -486,6 +504,24 @@ func _VideoService_CompleteDirectUpload_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _VideoService_GetFeedStats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FeedStatsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VideoServiceServer).GetFeedStats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VideoService_GetFeedStats_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VideoServiceServer).GetFeedStats(ctx, req.(*FeedStatsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // VideoService_ServiceDesc is the grpc.ServiceDesc for VideoService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -540,6 +576,10 @@ var VideoService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CompleteDirectUpload",
 			Handler:    _VideoService_CompleteDirectUpload_Handler,
+		},
+		{
+			MethodName: "GetFeedStats",
+			Handler:    _VideoService_GetFeedStats_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

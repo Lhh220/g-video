@@ -99,12 +99,12 @@ const Home = () => {
     }
   };
 
-  // 2. 点赞/取消点赞逻辑
+  // 2. 点赞/取消点赞逻辑 (source 标记曝光来源，服务端用于推荐效果统计)
   const handleFavorite = async (videoId, isFavorited) => {
     const token = localStorage.getItem('token');
     const actionType = isFavorited ? 2 : 1;
     try {
-      await axios.post(`/api/v1/favorite/action?video_id=${videoId}&action_type=${actionType}`, {}, {
+      await axios.post(`/api/v1/favorite/action?video_id=${videoId}&action_type=${actionType}&source=${feedMode}`, {}, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const newVideos = [...videos];

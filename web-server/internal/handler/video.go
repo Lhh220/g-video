@@ -476,6 +476,27 @@ func CompleteDirectUpload(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// GetFeedStats 管理员：各流量来源的曝光/点赞统计 (推荐效果评估)
+func GetFeedStats(c *gin.Context) {
+	token := extractToken(c)
+	claims, err := utils.ParseToken(token)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"status_code": 1, "status_msg": "未登录"})
+		return
+	}
+	if claims.Role != 1 {
+		c.JSON(http.StatusForbidden, gin.H{"status_code": 1, "status_msg": "只有管理员有权访问"})
+		return
+	}
+
+	resp, err := rpc_client.VideoClient.GetFeedStats(c, &video.FeedStatsRequest{AdminId: claims.UserID})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status_code": 1, "status_msg": "RPC服务异常"})
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
 func DeleteVideo(c *gin.Context) {
 	// 1. 鉴权获取当前用户 ID
 	authHeader := c.GetHeader("Authorization")

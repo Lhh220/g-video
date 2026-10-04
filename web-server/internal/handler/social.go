@@ -39,11 +39,18 @@ func FavoriteAction(c *gin.Context) {
 		})
 		return
 	}
-	// 4. 发起 RPC 调用
+	// 4. 发起 RPC 调用 (source 为可选的曝光来源标记，用于推荐效果统计)
+	source := c.Query("source")
+	switch source {
+	case "mix", "hot", "latest":
+	default:
+		source = ""
+	}
 	resp, err := rpc_client.SocialClient.FavoriteAction(c, &social.FavoriteRequest{
 		UserId:     claims.UserID,
 		VideoId:    videoID,
 		ActionType: int32(actionType),
+		Source:     source,
 	})
 
 	if err != nil {

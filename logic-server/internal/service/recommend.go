@@ -144,6 +144,56 @@ func convertIDs(ids []int64) []interface{} {
 	return out
 }
 
+// recordFeedExpose 曝光埋点：异步累加各来源计数 (推荐效果评估)
+func recordFeedExpose(mode string, n int) {
+	if mode == "" {
+		mode = "latest"
+	}
+	if n <= 0 {
+		return
+	}
+	go redis.RDB.IncrBy(context.Background(), "stats:feed:expose:"+mode, int64(n))
+}
+
+var feedStatSources = []string{"mix", "hot", "latest"}
+
+// GetFeedStats 管理员查看各流量来源的曝光/点赞统计 (推荐效果评估闭环)
+func (s *VideoService) GetFeedStats(ctx context.Context, req *video.FeedStatsRequest) (*video.FeedStatsResponse, error) {
+	var admin model.User
+	if err := database.DB.First(&admin, req.AdminId).Error; err != nil || admin.Role != 1 {
+		return &video.FeedStatsResponse{StatusCode: 1, StatusMsg: "无管理员权限"}, nil
+	}
+
+	exposeKeys := make([]string, 0, len(feedStatSources))
+	favKeys := make([]string, 0, len(feedStatSources))
+	for _, src := range feedStatSources {
+		exposeKeys = append(exposeKeys, "stats:feed:expose:"+src)
+		favKeys = append(favKeys, "stats:feed:fav:"+src)
+	}
+	exposeVals, _ := redis.RDB.MGet(ctx, exposeKeys...).Result()
+	favVals, _ := redis.RDB.MGet(ctx, favKeys...).Result()
+
+	toMap := func(vals []interface{}) map[string]int64 {
+		m := make(map[string]int64, len(feedStatSources))
+		for i, v := range vals {
+			m[feedStatSources[i]] = 0
+			if s, ok := v.(string); ok {
+				if n, err := strconv.ParseInt(s, 10, 64); err == nil {
+					m[feedStatSources[i]] = n
+				}
+			}
+		}
+		return m
+	}
+
+	return &video.FeedStatsResponse{
+		StatusCode: 0,
+		StatusMsg:  "success",
+		Expose:     toMap(exposeVals),
+		Favorite:   toMap(favVals),
+	}, nil
+}
+
 // ---- 打散：同作者视频不相邻 (贪心交换，保持分数序基本不变) ----
 // 边界：某作者占比超过一半时鸽巢原理下必然仍有相邻，算法只保证相邻对数最少化
 func spreadSameAuthors[T any](items []T, authorID func(T) int64) {
@@ -187,6 +237,7 @@ func (s *VideoService) hotFeed(ctx context.Context, req *video.FeedRequest) (*vi
 	followingMap := loadFollowingMap(ctx, currentUserID)
 	list := assembleRecommendList(ctx, ordered, currentUserID, followingMap)
 	recordViewed(currentUserID, ids)
+	recordFeedExpose("hot", len(list))
 
 	return &video.FeedResponse{
 		StatusCode: 0,
@@ -289,6 +340,7 @@ func (s *VideoService) mixFeed(ctx context.Context, req *video.FeedRequest) (*vi
 		viewedIDs = append(viewedIDs, int64(v.ID))
 	}
 	recordViewed(currentUserID, viewedIDs)
+	recordFeedExpose("mix", len(list))
 
 	return &video.FeedResponse{
 		StatusCode: 0,

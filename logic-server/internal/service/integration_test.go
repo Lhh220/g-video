@@ -570,6 +570,47 @@ func TestIntegration_CommentIdempotencyAndAuditRetry(t *testing.T) {
 	}
 }
 
+// ---- 用例 8: 分源曝光/互动统计 (推荐效果评估闭环) ----
+
+func TestIntegration_FeedStats(t *testing.T) {
+	requireIntegration(t)
+	ctx := context.Background()
+	admin, _ := itCreateUser(t, 1)
+	author, _ := itCreateUser(t, 0)
+	vID := itCreateVideo(t, author, 1, itMD5())
+
+	// 时间流曝光若干
+	_ = itFeedMap(t, "")
+	_ = itFeedMap(t, "")
+
+	// 带 source 的点赞
+	ss := &SocialService{}
+	if resp, _ := ss.FavoriteAction(ctx, &socialpb.FavoriteRequest{
+		UserId: author, VideoId: vID, ActionType: 1, Source: "mix",
+	}); resp.StatusCode != 0 {
+		t.Fatalf("点赞失败: %s", resp.StatusMsg)
+	}
+	time.Sleep(300 * time.Millisecond) // 等异步统计协程
+
+	vs := &VideoService{}
+	stats, err := vs.GetFeedStats(ctx, &video.FeedStatsRequest{AdminId: admin})
+	if err != nil || stats.StatusCode != 0 {
+		t.Fatalf("统计查询失败: err=%v resp=%+v", err, stats)
+	}
+	if stats.Expose["latest"] < 2 {
+		t.Errorf("latest 曝光数应≥2，实际 %d", stats.Expose["latest"])
+	}
+	if stats.Favorite["mix"] < 1 {
+		t.Errorf("mix 点赞数应≥1，实际 %d", stats.Favorite["mix"])
+	}
+
+	// 非管理员被拒
+	denied, _ := vs.GetFeedStats(ctx, &video.FeedStatsRequest{AdminId: author})
+	if denied.StatusCode == 0 {
+		t.Error("非管理员不应能查统计")
+	}
+}
+
 // ---- 测试内的小工具 ----
 
 func registerReq(username string) *userpb.RegisterRequest {

@@ -76,6 +76,11 @@ func (s *SocialService) FavoriteAction(ctx context.Context, req *social.Favorite
 		// 设置 7 天有效期
 		redis.RDB.Expire(bg, favoriteKey, 7*24*time.Hour)
 
+		// 分源互动统计 (推荐效果评估：mix/hot/latest 各自的点赞率)
+		if req.ActionType == 1 && req.Source != "" {
+			redis.RDB.Incr(bg, "stats:feed:fav:"+req.Source)
+		}
+
 		// 计数增量进 Redis，由 flusher 定时合并进 MySQL
 		if countChanged {
 			delta := int64(1)

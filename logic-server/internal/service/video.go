@@ -172,6 +172,7 @@ func (s *VideoService) Feed(ctx context.Context, req *video.FeedRequest) (*video
 		nextTime = v.CreatedAt.UnixMilli()
 	}
 
+	recordFeedExpose("latest", len(videoList))
 	return &video.FeedResponse{
 		StatusCode: 0,
 		StatusMsg:  "success",

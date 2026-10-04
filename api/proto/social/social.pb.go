@@ -28,6 +28,7 @@ type FavoriteRequest struct {
 	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	VideoId       int64                  `protobuf:"varint,2,opt,name=video_id,json=videoId,proto3" json:"video_id,omitempty"`
 	ActionType    int32                  `protobuf:"varint,3,opt,name=action_type,json=actionType,proto3" json:"action_type,omitempty"` // 1-点赞, 2-取消点赞
+	Source        string                 `protobuf:"bytes,4,opt,name=source,proto3" json:"source,omitempty"`                            // 曝光来源 mix/hot/latest，用于推荐效果统计，可空
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -81,6 +82,13 @@ func (x *FavoriteRequest) GetActionType() int32 {
 		return x.ActionType
 	}
 	return 0
+}
+
+func (x *FavoriteRequest) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
 }
 
 type FavoriteResponse struct {
@@ -572,12 +580,13 @@ var File_api_proto_social_proto protoreflect.FileDescriptor
 
 const file_api_proto_social_proto_rawDesc = "" +
 	"\n" +
-	"\x16api/proto/social.proto\x12\x06social\x1a\x14api/proto/user.proto\"f\n" +
+	"\x16api/proto/social.proto\x12\x06social\x1a\x14api/proto/user.proto\"~\n" +
 	"\x0fFavoriteRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x19\n" +
 	"\bvideo_id\x18\x02 \x01(\x03R\avideoId\x12\x1f\n" +
 	"\vaction_type\x18\x03 \x01(\x05R\n" +
-	"actionType\"R\n" +
+	"actionType\x12\x16\n" +
+	"\x06source\x18\x04 \x01(\tR\x06source\"R\n" +
 	"\x10FavoriteResponse\x12\x1f\n" +
 	"\vstatus_code\x18\x01 \x01(\x05R\n" +
 	"statusCode\x12\x1d\n" +
@@ -628,8 +637,7 @@ const file_api_proto_social_proto_rawDesc = "" +
 	"\x0eFavoriteAction\x12\x17.social.FavoriteRequest\x1a\x18.social.FavoriteResponse\x12C\n" +
 	"\x0eRelationAction\x12\x17.social.RelationRequest\x1a\x18.social.RelationResponse\x12@\n" +
 	"\rCommentAction\x12\x16.social.CommentRequest\x1a\x17.social.CommentResponse\x12F\n" +
-	"\vCommentList\x12\x1a.social.CommentListRequest\x1a\x1b.social.CommentListResponseB\n" +
-	"Z\b./socialb\x06proto3"
+	"\vCommentList\x12\x1a.social.CommentListRequest\x1a\x1b.social.CommentListResponseB\x12Z\x10api/proto/socialb\x06proto3"
 
 var (
 	file_api_proto_social_proto_rawDescOnce sync.Once
