@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"os/signal"
 	"syscall"
 	"time"
@@ -62,10 +63,15 @@ func main() {
 		panic(fmt.Sprintf("监听端口失败: %v", err))
 	}
 
-	// Prometheus 指标端点 (独立小 HTTP 服务，不与 gRPC 抢端口)
+	// Prometheus 指标端点 + pprof 性能分析 (独立小 HTTP 服务，不与 gRPC 抢端口)
 	metricsSrv := &http.Server{Addr: ":9091", Handler: func() http.Handler {
 		mux := http.NewServeMux()
 		mux.Handle("/metrics", promhttp.Handler())
+		mux.HandleFunc("/debug/pprof/", pprof.Index)
+		mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 		return mux
 	}()}
 	go func() {

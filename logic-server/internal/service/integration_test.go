@@ -524,6 +524,52 @@ func TestIntegration_DistributedLock(t *testing.T) {
 	pkgredis.ReleaseLock(ctx, key, tok3)
 }
 
+// ---- 用例 7: 评论幂等 + 审核重复提交幂等 ----
+
+func TestIntegration_CommentIdempotencyAndAuditRetry(t *testing.T) {
+	requireIntegration(t)
+	ctx := context.Background()
+	author, _ := itCreateUser(t, 0)
+	admin, _ := itCreateUser(t, 1)
+	vID := itCreateVideo(t, author, 1, itMD5())
+	_ = vID
+	pendingID := itCreateVideo(t, author, 0, itMD5())
+
+	s := &SocialService{}
+
+	// 同内容评论 5 秒内第二次应被拒 (双击/重试防护)
+	c1, _ := s.CommentAction(ctx, &socialpb.CommentRequest{
+		UserId: author, VideoId: vID, ActionType: 1, CommentText: "好视频！",
+	})
+	if c1.StatusCode != 0 {
+		t.Fatalf("首次评论应成功: %s", c1.StatusMsg)
+	}
+	c2, _ := s.CommentAction(ctx, &socialpb.CommentRequest{
+		UserId: author, VideoId: vID, ActionType: 1, CommentText: "好视频！",
+	})
+	if c2.StatusCode == 0 {
+		t.Error("重复评论应被幂等拦截")
+	}
+	// 不同内容不受影响
+	c3, _ := s.CommentAction(ctx, &socialpb.CommentRequest{
+		UserId: author, VideoId: vID, ActionType: 1, CommentText: "再说一句",
+	})
+	if c3.StatusCode != 0 {
+		t.Errorf("不同内容评论应成功: %s", c3.StatusMsg)
+	}
+
+	// 审核通过后重复审核：MySQL 值未变的 UPDATE 受影响行为 0，应视为幂等成功而非报错
+	vs := &VideoService{}
+	r1, _ := vs.AuditVideo(ctx, &video.AuditRequest{AdminId: admin, VideoId: pendingID, Action: 1})
+	if r1.StatusCode != 0 {
+		t.Fatalf("首次审核通过失败: %s", r1.StatusMsg)
+	}
+	r2, _ := vs.AuditVideo(ctx, &video.AuditRequest{AdminId: admin, VideoId: pendingID, Action: 1})
+	if r2.StatusCode != 0 {
+		t.Errorf("重复审核通过应幂等成功，实际: %s", r2.StatusMsg)
+	}
+}
+
 // ---- 测试内的小工具 ----
 
 func registerReq(username string) *userpb.RegisterRequest {

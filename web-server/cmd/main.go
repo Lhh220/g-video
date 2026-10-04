@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"net/http"
+	"net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
@@ -83,6 +84,19 @@ func main() {
 		apiV1.GET("/admin/pending/list", handler.GetPendingList)
 
 	}
+
+	// pprof 性能分析端点 (仅内网调试/压测用，不经 nginx 暴露)
+	go func() {
+		pprofMux := http.NewServeMux()
+		pprofMux.HandleFunc("/debug/pprof/", pprof.Index)
+		pprofMux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		pprofMux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		pprofMux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		pprofMux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+		if err := http.ListenAndServe(":6060", pprofMux); err != nil {
+			logx.L().Warn("pprof 端点退出", zap.Error(err))
+		}
+	}()
 
 	// 优雅退出：SIGINT/SIGTERM → 排空在途 HTTP 请求 → 关闭 gRPC 连接
 	srv := &http.Server{Addr: ":8080", Handler: r}

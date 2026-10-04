@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"crypto/md5"
 	"fmt"
 	"time"
 
@@ -161,6 +162,16 @@ func (s *SocialService) RelationAction(ctx context.Context, req *social.Relation
 }
 
 func (s *SocialService) CommentAction(ctx context.Context, req *social.CommentRequest) (*social.CommentResponse, error) {
+	// 幂等防重：同用户+同视频+同内容 5 秒内重复提交(双击/网络重试)直接拒绝。
+	// Redis 异常时放行，可用性优先
+	if req.ActionType == 1 {
+		sum := md5.Sum([]byte(req.CommentText))
+		idemKey := fmt.Sprintf("idem:comment:%d:%d:%x", req.UserId, req.VideoId, sum)
+		if ok, err := redis.RDB.SetNX(ctx, idemKey, 1, 5*time.Second).Result(); err == nil && !ok {
+			return &social.CommentResponse{StatusCode: 1, StatusMsg: "评论已提交，请勿重复发送"}, nil
+		}
+	}
+
 	var newComment model.Comment
 
 	err := database.DB.Transaction(func(tx *gorm.DB) error {

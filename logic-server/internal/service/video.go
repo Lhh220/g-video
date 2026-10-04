@@ -279,7 +279,12 @@ func (s *VideoService) AuditVideo(ctx context.Context, req *video.AuditRequest) 
 				return res.Error
 			}
 			if res.RowsAffected == 0 {
-				return fmt.Errorf("视频不存在")
+				// MySQL 对"值未变化"的 UPDATE 不计受影响行：视频已是发布态时属幂等重复审核，视为成功
+				var exist int64
+				tx.Model(&model.Video{}).Where("id = ? AND status = ?", req.VideoId, 1).Count(&exist)
+				if exist == 0 {
+					return fmt.Errorf("视频不存在")
+				}
 			}
 		}
 
