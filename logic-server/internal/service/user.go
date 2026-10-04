@@ -256,9 +256,9 @@ func GetUserWithCache(ctx context.Context, userID int64) (*user.User, error) {
 		}
 	}
 
-	// 2. 查数据库 (fallback)
-	var u model.User
-	if err := database.DB.First(&u, userID).Error; err != nil {
+	// 2. 查数据库 (singleflight 合并同用户并发回源，防热 key 失效瞬间击穿 MySQL)
+	u, err := loadUserSF(userID)
+	if err != nil {
 		return nil, err
 	}
 

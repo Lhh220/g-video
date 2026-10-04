@@ -53,6 +53,8 @@ func main() {
 	go service.RunFavoriteCounterFlusher(rootCtx)
 	// 7. 热门池预计算协程 (每分钟刷新推荐流的热度 ZSet)
 	go service.RunHotPoolRefresher(rootCtx)
+	// 8. 布隆过滤器重建 (秒传前置判断的位图补漏)
+	go service.RebuildBloomFilter(rootCtx)
 
 	fmt.Println("Logic-Server 基础设施启动成功！")
 	lis, err := net.Listen("tcp", ":50051")

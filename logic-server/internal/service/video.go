@@ -57,6 +57,7 @@ func (s *VideoService) PublishVideo(ctx context.Context, req *video.PublishReque
 	if err := database.DB.Create(&newVideo).Error; err != nil {
 		return &video.PublishResponse{StatusCode: 1, StatusMsg: "数据库保存失败"}, nil
 	}
+	afterVideoCreated(&newVideo)
 
 	// 发布事件进 MQ，由消费者异步扩散 (封面兜底/粉丝通知)，不阻塞用户上传主流程
 	go func() {
@@ -85,9 +86,15 @@ func (s *VideoService) Feed(ctx context.Context, req *video.FeedRequest) (*video
 		t = time.UnixMilli(req.LatestTime)
 	}
 
-	// 2. 从数据库查询视频列表 (主表查询暂不建议放 Redis，除非是极热门榜单)
-	// status = 1 才是审核通过的视频，待审(0)/驳回(2)绝不能出现在公共流里
-	err := database.DB.Where("created_at < ? AND status = ?", t, 1).Order("created_at desc").Limit(30).Find(&videos).Error
+	// 2. 首屏(无游标)走 3 秒短缓存 + singleflight 防击穿；翻页请求仍直查 DB
+	if req.LatestTime == 0 {
+		videos = getLatestFirstPage(ctx)
+	}
+	var err error
+	if len(videos) == 0 {
+		// status = 1 才是审核通过的视频，待审(0)/驳回(2)绝不能出现在公共流里
+		err = database.DB.Where("created_at < ? AND status = ?", t, 1).Order("created_at desc").Limit(30).Find(&videos).Error
+	}
 	if err != nil {
 		return &video.FeedResponse{StatusCode: 1, StatusMsg: "查询失败"}, nil
 	}
@@ -294,6 +301,9 @@ func (s *VideoService) AuditVideo(ctx context.Context, req *video.AuditRequest) 
 	if err != nil {
 		return &video.AuditResponse{StatusCode: 1, StatusMsg: err.Error()}, nil
 	}
+
+	// 通过/驳回都改变了可见内容，失效首屏缓存
+	invalidateLatestFirstPage()
 
 	// 4. 驳回的事务提交后，同步删除 OSS 云端文件
 	if req.Action == 2 && playURL != "" {
@@ -504,6 +514,7 @@ func (s *VideoService) DeleteVideo(ctx context.Context, req *video.DeleteRequest
 	if err != nil {
 		return &video.DeleteResponse{StatusCode: 1, StatusMsg: "数据库操作失败"}, nil
 	}
+	invalidateLatestFirstPage()
 
 	// 4. 数据库删除成功后，同步删除 OSS 云端文件，确保存储空间不浪费
 	if err := oss.DeleteFileByURL(videoModel.PlayURL); err != nil {

@@ -63,10 +63,12 @@ func (s *VideoService) InitUpload(ctx context.Context, req *video.InitUploadRequ
 		return &video.InitUploadResponse{StatusCode: 1, StatusMsg: "缺少文件指纹或大小"}, nil
 	}
 
-	// 1. 秒传：库中已有相同指纹的视频，直接复用云上文件
+	// 1. 秒传：布隆过滤器前置判断，"肯定没传过"的指纹连 DB 都不查 (防穿透)
 	// (被驳回的视频连同记录会被物理删除，所以查到即为有效源)
 	var cnt int64
-	database.DB.Model(&model.Video{}).Where("file_md5 = ?", req.FileMd5).Count(&cnt)
+	if bloomMayExist(ctx, req.FileMd5) {
+		database.DB.Model(&model.Video{}).Where("file_md5 = ?", req.FileMd5).Count(&cnt)
+	}
 	if cnt > 0 {
 		return &video.InitUploadResponse{StatusCode: 0, StatusMsg: "秒传命中", Uploaded: true}, nil
 	}
@@ -170,6 +172,7 @@ func (s *VideoService) CompleteUpload(ctx context.Context, req *video.CompleteUp
 	if err := database.DB.Create(&newVideo).Error; err != nil {
 		return &video.CompleteUploadResponse{StatusCode: 1, StatusMsg: "数据库保存失败"}, nil
 	}
+	afterVideoCreated(&newVideo)
 
 	// 发布事件进 MQ，由消费者异步扩散，不阻塞用户上传主流程
 	go func() {
@@ -204,9 +207,11 @@ func (s *VideoService) GetDirectUploadURL(ctx context.Context, req *video.Direct
 		return &video.DirectUploadURLResponse{StatusCode: 1, StatusMsg: "缺少文件指纹或大小"}, nil
 	}
 
-	// 秒传：库中已有相同指纹，直接复用建行，连直传都省了
+	// 秒传：布隆前置 + 库中已有相同指纹，直接复用建行，连直传都省了
 	var cnt int64
-	database.DB.Model(&model.Video{}).Where("file_md5 = ?", req.FileMd5).Count(&cnt)
+	if bloomMayExist(ctx, req.FileMd5) {
+		database.DB.Model(&model.Video{}).Where("file_md5 = ?", req.FileMd5).Count(&cnt)
+	}
 	if cnt > 0 {
 		newVideo := model.Video{
 			AuthorID: claims.UserID,
@@ -281,6 +286,7 @@ func (s *VideoService) CompleteDirectUpload(ctx context.Context, req *video.Comp
 	if err := database.DB.Create(&newVideo).Error; err != nil {
 		return &video.CompleteDirectResponse{StatusCode: 1, StatusMsg: "数据库保存失败"}, nil
 	}
+	afterVideoCreated(&newVideo)
 
 	redis.RDB.Del(ctx, directKey(req.UploadToken))
 

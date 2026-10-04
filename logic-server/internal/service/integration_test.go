@@ -208,6 +208,8 @@ func itCreateVideo(t *testing.T, author int64, status int32, md5 string) int64 {
 	if err := database.DB.Create(&v).Error; err != nil {
 		t.Fatalf("创建视频失败: %v", err)
 	}
+	// 与真实入库路径保持一致：布隆加指纹 + 首屏缓存失效
+	afterVideoCreated(&v)
 	return int64(v.ID)
 }
 
@@ -430,10 +432,14 @@ func TestIntegration_FavoriteCounterFlush(t *testing.T) {
 		t.Errorf("flush 前数据库计数应为0，实际 %d", v.FavoriteCount)
 	}
 	feed := itFeedMap(t, itToken(t, u1))
-	if fv, ok := feed[vID]; !ok || fv.FavoriteCount != 2 {
-		t.Errorf("Feed 展示计数应为2(DB0+增量2)，实际 %+v", fv)
+	fv, ok := feed[vID]
+	if !ok {
+		t.Fatal("Feed 应包含刚创建的视频")
 	}
-	if !feed[vID].IsFavorite {
+	if fv.FavoriteCount != 2 {
+		t.Errorf("Feed 展示计数应为2(DB0+增量2)，实际 %d", fv.FavoriteCount)
+	}
+	if !fv.IsFavorite {
 		t.Error("u1 的点赞状态应显示已赞")
 	}
 
