@@ -109,6 +109,9 @@ service VideoService {
     rpc InitUpload(InitUploadRequest) returns (InitUploadResponse);
     rpc UploadPart(UploadPartRequest) returns (UploadPartResponse);
     rpc CompleteUpload(CompleteUploadRequest) returns (CompleteUploadResponse);
+    // 签名直传：后端只签发凭证，文件字节直接 浏览器→OSS，不过应用服务器
+    rpc GetDirectUploadURL(DirectUploadURLRequest) returns (DirectUploadURLResponse);
+    rpc CompleteDirectUpload(CompleteDirectRequest) returns (CompleteDirectResponse);
 }
 
 // --- 分片上传 ---
@@ -148,6 +151,35 @@ message CompleteUploadRequest {
 }
 
 message CompleteUploadResponse {
+    int32 status_code = 1;
+    string status_msg = 2;
+    int64 video_id = 3;
+}
+
+// --- 签名直传 (小文件优选通道: 浏览器 PUT 直传 OSS) ---
+message DirectUploadURLRequest {
+    string token = 1;
+    string filename = 2;
+    string file_md5 = 3;
+    int64 file_size = 4;
+}
+
+message DirectUploadURLResponse {
+    int32 status_code = 1;
+    string status_msg = 2;
+    bool uploaded = 3;       // 秒传命中，无需任何上传
+    int64 video_id = 4;      // uploaded=true 时的已建记录
+    string upload_url = 5;   // 带签名的 PUT URL (15 分钟有效)
+    string upload_token = 6; // 完成时带回，服务端据此校验归属
+}
+
+message CompleteDirectRequest {
+    string token = 1;
+    string upload_token = 2;
+    string title = 3;
+}
+
+message CompleteDirectResponse {
     int32 status_code = 1;
     string status_msg = 2;
     int64 video_id = 3;

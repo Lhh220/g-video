@@ -66,6 +66,9 @@ func main() {
 			videoV1.POST("/upload/init", middleware.RateLimitUpload(), handler.InitUpload)
 			videoV1.POST("/upload/part", middleware.RateLimitUpload(), handler.UploadPart)
 			videoV1.POST("/upload/complete", middleware.RateLimitUpload(), handler.CompleteUpload)
+			// 签名直传：字节直连 OSS，本服务只签发凭证/确认
+			videoV1.POST("/upload/direct", middleware.RateLimitUpload(), handler.GetDirectUploadURL)
+			videoV1.POST("/upload/direct/complete", middleware.RateLimitUpload(), handler.CompleteDirectUpload)
 			videoV1.GET("/feed", handler.GetFeed)
 			videoV1.GET("/follow/feed", handler.GetFollowingFeed)
 			videoV1.GET("/publish/list", handler.GetPublishList)

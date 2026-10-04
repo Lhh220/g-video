@@ -3,6 +3,8 @@ package service
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"path/filepath"
@@ -177,4 +179,116 @@ func (s *VideoService) CompleteUpload(ctx context.Context, req *video.CompleteUp
 	}()
 
 	return &video.CompleteUploadResponse{StatusCode: 0, StatusMsg: "发布成功", VideoId: int64(newVideo.ID)}, nil
+}
+
+// ---- 签名直传：文件字节直接 浏览器→OSS，应用服务器只签发凭证与确认 ----
+
+// directSession 签名直传的待完成记录 (Redis 暂存，防伪造 upload_token)
+type directSession struct {
+	UserID    int64  `json:"user_id"`
+	ObjectKey string `json:"object_key"`
+	FileMD5   string `json:"file_md5"`
+}
+
+func directKey(token string) string {
+	return fmt.Sprintf("upload:direct:%s", token)
+}
+
+// GetDirectUploadURL 签发 15 分钟有效的 PUT 直传 URL
+func (s *VideoService) GetDirectUploadURL(ctx context.Context, req *video.DirectUploadURLRequest) (*video.DirectUploadURLResponse, error) {
+	claims, err := utils.ParseToken(req.Token)
+	if err != nil {
+		return &video.DirectUploadURLResponse{StatusCode: 1, StatusMsg: "Token无效"}, nil
+	}
+	if req.FileMd5 == "" || req.FileSize <= 0 {
+		return &video.DirectUploadURLResponse{StatusCode: 1, StatusMsg: "缺少文件指纹或大小"}, nil
+	}
+
+	// 秒传：库中已有相同指纹，直接复用建行，连直传都省了
+	var cnt int64
+	database.DB.Model(&model.Video{}).Where("file_md5 = ?", req.FileMd5).Count(&cnt)
+	if cnt > 0 {
+		newVideo := model.Video{
+			AuthorID: claims.UserID,
+			Title:    "",
+			PlayURL:  "",
+		}
+		// 复用源文件地址
+		var src model.Video
+		database.DB.Where("file_md5 = ?", req.FileMd5).First(&src)
+		newVideo.PlayURL = src.PlayURL
+		newVideo.CoverURL = src.CoverURL
+		newVideo.FileMD5 = src.FileMD5
+		newVideo.HLSURL = src.HLSURL
+		if err := database.DB.Create(&newVideo).Error; err != nil {
+			return &video.DirectUploadURLResponse{StatusCode: 1, StatusMsg: "数据库保存失败"}, nil
+		}
+		return &video.DirectUploadURLResponse{StatusCode: 0, StatusMsg: "秒传命中", Uploaded: true, VideoId: int64(newVideo.ID)}, nil
+	}
+
+	objectKey := objectKeyForMD5(req.FileMd5, req.Filename)
+	uploadURL, err := oss.SignPutURL(objectKey, 900)
+	if err != nil {
+		return &video.DirectUploadURLResponse{StatusCode: 1, StatusMsg: "签发上传凭证失败: " + err.Error()}, nil
+	}
+
+	// 生成 upload_token 并把归属关系存 Redis (1 小时有效)
+	b := make([]byte, 16)
+	rand.Read(b)
+	uploadToken := hex.EncodeToString(b)
+	data, _ := json.Marshal(directSession{UserID: claims.UserID, ObjectKey: objectKey, FileMD5: req.FileMd5})
+	redis.RDB.Set(ctx, directKey(uploadToken), data, time.Hour)
+
+	return &video.DirectUploadURLResponse{
+		StatusCode:  0,
+		StatusMsg:   "success",
+		UploadUrl:   uploadURL,
+		UploadToken: uploadToken,
+	}, nil
+}
+
+// CompleteDirectUpload 确认直传完成：校验会话归属 + 对象确实已上传，然后落库
+func (s *VideoService) CompleteDirectUpload(ctx context.Context, req *video.CompleteDirectRequest) (*video.CompleteDirectResponse, error) {
+	claims, err := utils.ParseToken(req.Token)
+	if err != nil {
+		return &video.CompleteDirectResponse{StatusCode: 1, StatusMsg: "Token无效"}, nil
+	}
+
+	val, err := redis.RDB.Get(ctx, directKey(req.UploadToken)).Result()
+	if err != nil {
+		return &video.CompleteDirectResponse{StatusCode: 1, StatusMsg: "上传凭证无效或已过期，请重新发起上传"}, nil
+	}
+	var sess directSession
+	if err := json.Unmarshal([]byte(val), &sess); err != nil || sess.UserID != claims.UserID {
+		return &video.CompleteDirectResponse{StatusCode: 1, StatusMsg: "上传凭证归属校验失败"}, nil
+	}
+
+	// 确认文件确实已传到 OSS (防止拿着 token 空落库)
+	exists, err := oss.ObjectExists(sess.ObjectKey)
+	if err != nil || !exists {
+		return &video.CompleteDirectResponse{StatusCode: 1, StatusMsg: "云端尚未检测到文件，请先完成上传"}, nil
+	}
+
+	playURL := fmt.Sprintf("https://%s.%s/%s",
+		config.GlobalConfig.OSS.BucketName, config.GlobalConfig.OSS.Endpoint, sess.ObjectKey)
+	newVideo := model.Video{
+		AuthorID: claims.UserID,
+		Title:    req.Title,
+		PlayURL:  playURL,
+		CoverURL: playURL + "?x-oss-process=video/snapshot,t_1000,f_jpg,w_0,h_0,m_fast",
+		FileMD5:  sess.FileMD5,
+	}
+	if err := database.DB.Create(&newVideo).Error; err != nil {
+		return &video.CompleteDirectResponse{StatusCode: 1, StatusMsg: "数据库保存失败"}, nil
+	}
+
+	redis.RDB.Del(ctx, directKey(req.UploadToken))
+
+	go func() {
+		if err := mq.PublishVideoMessage(int64(newVideo.ID), claims.UserID, playURL); err != nil {
+			fmt.Printf("⚠️ [MQ] 视频发布事件发送失败 (不影响发布结果): %v\n", err)
+		}
+	}()
+
+	return &video.CompleteDirectResponse{StatusCode: 0, StatusMsg: "发布成功", VideoId: int64(newVideo.ID)}, nil
 }

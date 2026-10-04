@@ -420,6 +420,62 @@ func CompleteUpload(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// GetDirectUploadURL 签名直传第一步：秒传判断/签发 PUT 直传 URL (文件字节不过本服务)
+func GetDirectUploadURL(c *gin.Context) {
+	var reqData struct {
+		Filename string `json:"filename"`
+		FileSize int64  `json:"file_size"`
+		FileMd5  string `json:"file_md5"`
+	}
+	if err := c.ShouldBindJSON(&reqData); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status_code": 1, "status_msg": "参数格式错误"})
+		return
+	}
+	if !allowedVideoExts[strings.ToLower(filepath.Ext(reqData.Filename))] {
+		c.JSON(http.StatusBadRequest, gin.H{"status_code": 1, "status_msg": "不支持的视频格式"})
+		return
+	}
+	if len(reqData.FileMd5) != 32 {
+		c.JSON(http.StatusBadRequest, gin.H{"status_code": 1, "status_msg": "文件指纹格式错误"})
+		return
+	}
+
+	resp, err := rpc_client.VideoClient.GetDirectUploadURL(c, &video.DirectUploadURLRequest{
+		Token:     extractToken(c),
+		Filename:  reqData.Filename,
+		FileSize:  reqData.FileSize,
+		FileMd5:   reqData.FileMd5,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status_code": 1, "status_msg": "RPC调用失败"})
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+// CompleteDirectUpload 签名直传第三步：确认云端已有文件后落库
+func CompleteDirectUpload(c *gin.Context) {
+	var reqData struct {
+		UploadToken string `json:"upload_token"`
+		Title       string `json:"title"`
+	}
+	if err := c.ShouldBindJSON(&reqData); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status_code": 1, "status_msg": "参数格式错误"})
+		return
+	}
+
+	resp, err := rpc_client.VideoClient.CompleteDirectUpload(c, &video.CompleteDirectRequest{
+		Token:       extractToken(c),
+		UploadToken: reqData.UploadToken,
+		Title:       reqData.Title,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status_code": 1, "status_msg": "RPC调用失败"})
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
 func DeleteVideo(c *gin.Context) {
 	// 1. 鉴权获取当前用户 ID
 	authHeader := c.GetHeader("Authorization")

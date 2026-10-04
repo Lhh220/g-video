@@ -176,6 +176,17 @@ func DownloadToFile(objectKey, filePath string) error {
 	return Bucket.GetObjectToFile(objectKey, filePath)
 }
 
+// SignPutURL 生成带签名的 PUT 上传 URL，前端拿到后可直传 OSS (字节不过应用服务器)
+func SignPutURL(objectKey string, expiredInSec int64) (string, error) {
+	// 绑定 Content-Type，前端上传时必须带同样的头，否则签名校验失败
+	return Bucket.SignURL(objectKey, oss.HTTPPut, expiredInSec, oss.ContentType("application/octet-stream"))
+}
+
+// ObjectExists 判断对象是否已存在 (签名直传完成确认用)
+func ObjectExists(objectKey string) (bool, error) {
+	return Bucket.IsObjectExist(objectKey)
+}
+
 // UploadDir 把本地目录下所有文件上传到指定前缀，返回 m3u8 的访问 URL
 // 约定：目录内必须存在 index.m3u8，切片用相对路径互相引用，前缀上传后依然成立
 func UploadDir(dir, prefix string) (string, error) {

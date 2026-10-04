@@ -19,16 +19,18 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	VideoService_Feed_FullMethodName              = "/video.VideoService/Feed"
-	VideoService_PublishVideo_FullMethodName      = "/video.VideoService/PublishVideo"
-	VideoService_DeleteVideo_FullMethodName       = "/video.VideoService/DeleteVideo"
-	VideoService_AuditVideo_FullMethodName        = "/video.VideoService/AuditVideo"
-	VideoService_GetPublishList_FullMethodName    = "/video.VideoService/GetPublishList"
-	VideoService_FollowingFeed_FullMethodName     = "/video.VideoService/FollowingFeed"
-	VideoService_ListPendingVideos_FullMethodName = "/video.VideoService/ListPendingVideos"
-	VideoService_InitUpload_FullMethodName        = "/video.VideoService/InitUpload"
-	VideoService_UploadPart_FullMethodName        = "/video.VideoService/UploadPart"
-	VideoService_CompleteUpload_FullMethodName    = "/video.VideoService/CompleteUpload"
+	VideoService_Feed_FullMethodName                 = "/video.VideoService/Feed"
+	VideoService_PublishVideo_FullMethodName         = "/video.VideoService/PublishVideo"
+	VideoService_DeleteVideo_FullMethodName          = "/video.VideoService/DeleteVideo"
+	VideoService_AuditVideo_FullMethodName           = "/video.VideoService/AuditVideo"
+	VideoService_GetPublishList_FullMethodName       = "/video.VideoService/GetPublishList"
+	VideoService_FollowingFeed_FullMethodName        = "/video.VideoService/FollowingFeed"
+	VideoService_ListPendingVideos_FullMethodName    = "/video.VideoService/ListPendingVideos"
+	VideoService_InitUpload_FullMethodName           = "/video.VideoService/InitUpload"
+	VideoService_UploadPart_FullMethodName           = "/video.VideoService/UploadPart"
+	VideoService_CompleteUpload_FullMethodName       = "/video.VideoService/CompleteUpload"
+	VideoService_GetDirectUploadURL_FullMethodName   = "/video.VideoService/GetDirectUploadURL"
+	VideoService_CompleteDirectUpload_FullMethodName = "/video.VideoService/CompleteDirectUpload"
 )
 
 // VideoServiceClient is the client API for VideoService service.
@@ -48,6 +50,9 @@ type VideoServiceClient interface {
 	InitUpload(ctx context.Context, in *InitUploadRequest, opts ...grpc.CallOption) (*InitUploadResponse, error)
 	UploadPart(ctx context.Context, in *UploadPartRequest, opts ...grpc.CallOption) (*UploadPartResponse, error)
 	CompleteUpload(ctx context.Context, in *CompleteUploadRequest, opts ...grpc.CallOption) (*CompleteUploadResponse, error)
+	// 签名直传：后端只签发凭证，文件字节直接 浏览器→OSS，不过应用服务器
+	GetDirectUploadURL(ctx context.Context, in *DirectUploadURLRequest, opts ...grpc.CallOption) (*DirectUploadURLResponse, error)
+	CompleteDirectUpload(ctx context.Context, in *CompleteDirectRequest, opts ...grpc.CallOption) (*CompleteDirectResponse, error)
 }
 
 type videoServiceClient struct {
@@ -158,6 +163,26 @@ func (c *videoServiceClient) CompleteUpload(ctx context.Context, in *CompleteUpl
 	return out, nil
 }
 
+func (c *videoServiceClient) GetDirectUploadURL(ctx context.Context, in *DirectUploadURLRequest, opts ...grpc.CallOption) (*DirectUploadURLResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DirectUploadURLResponse)
+	err := c.cc.Invoke(ctx, VideoService_GetDirectUploadURL_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *videoServiceClient) CompleteDirectUpload(ctx context.Context, in *CompleteDirectRequest, opts ...grpc.CallOption) (*CompleteDirectResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CompleteDirectResponse)
+	err := c.cc.Invoke(ctx, VideoService_CompleteDirectUpload_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // VideoServiceServer is the server API for VideoService service.
 // All implementations must embed UnimplementedVideoServiceServer
 // for forward compatibility.
@@ -175,6 +200,9 @@ type VideoServiceServer interface {
 	InitUpload(context.Context, *InitUploadRequest) (*InitUploadResponse, error)
 	UploadPart(context.Context, *UploadPartRequest) (*UploadPartResponse, error)
 	CompleteUpload(context.Context, *CompleteUploadRequest) (*CompleteUploadResponse, error)
+	// 签名直传：后端只签发凭证，文件字节直接 浏览器→OSS，不过应用服务器
+	GetDirectUploadURL(context.Context, *DirectUploadURLRequest) (*DirectUploadURLResponse, error)
+	CompleteDirectUpload(context.Context, *CompleteDirectRequest) (*CompleteDirectResponse, error)
 	mustEmbedUnimplementedVideoServiceServer()
 }
 
@@ -214,6 +242,12 @@ func (UnimplementedVideoServiceServer) UploadPart(context.Context, *UploadPartRe
 }
 func (UnimplementedVideoServiceServer) CompleteUpload(context.Context, *CompleteUploadRequest) (*CompleteUploadResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CompleteUpload not implemented")
+}
+func (UnimplementedVideoServiceServer) GetDirectUploadURL(context.Context, *DirectUploadURLRequest) (*DirectUploadURLResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetDirectUploadURL not implemented")
+}
+func (UnimplementedVideoServiceServer) CompleteDirectUpload(context.Context, *CompleteDirectRequest) (*CompleteDirectResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CompleteDirectUpload not implemented")
 }
 func (UnimplementedVideoServiceServer) mustEmbedUnimplementedVideoServiceServer() {}
 func (UnimplementedVideoServiceServer) testEmbeddedByValue()                      {}
@@ -416,6 +450,42 @@ func _VideoService_CompleteUpload_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _VideoService_GetDirectUploadURL_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DirectUploadURLRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VideoServiceServer).GetDirectUploadURL(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VideoService_GetDirectUploadURL_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VideoServiceServer).GetDirectUploadURL(ctx, req.(*DirectUploadURLRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VideoService_CompleteDirectUpload_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CompleteDirectRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VideoServiceServer).CompleteDirectUpload(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VideoService_CompleteDirectUpload_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VideoServiceServer).CompleteDirectUpload(ctx, req.(*CompleteDirectRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // VideoService_ServiceDesc is the grpc.ServiceDesc for VideoService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -462,6 +532,14 @@ var VideoService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CompleteUpload",
 			Handler:    _VideoService_CompleteUpload_Handler,
+		},
+		{
+			MethodName: "GetDirectUploadURL",
+			Handler:    _VideoService_GetDirectUploadURL_Handler,
+		},
+		{
+			MethodName: "CompleteDirectUpload",
+			Handler:    _VideoService_CompleteDirectUpload_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

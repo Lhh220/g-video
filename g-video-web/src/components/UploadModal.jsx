@@ -4,6 +4,7 @@ import SparkMD5 from 'spark-md5';
 
 const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB 一片
 const MAX_RETRY = 3; // 单片失败重试次数
+const DIRECT_MAX = 100 * 1024 * 1024; // 100MB 以内走签名直传(浏览器→OSS)，更大走分片
 
 const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
 
@@ -35,7 +36,42 @@ const UploadModal = ({ isOpen, onClose }) => {
       setPercent(0);
       const md5 = await computeMD5(file, setPercent);
 
-      // 2. 初始化：后端判断 秒传 / 续传 / 新会话
+      // 2a. 小文件：签名直传 (字节不过应用服务器，浏览器 PUT 直达 OSS)
+      if (file.size <= DIRECT_MAX) {
+        setPhase('uploading');
+        setPercent(0);
+        const dRes = await axios.post('/api/v1/video/upload/direct', {
+          filename: file.name,
+          file_size: file.size,
+          file_md5: md5
+        }, { headers: authHeaders() });
+        if (dRes.data.status_code !== 0) throw new Error(dRes.data.status_msg || '初始化直传失败');
+
+        if (dRes.data.uploaded) {
+          alert('发布成功(秒传)！等待管理员审核');
+          setTitle(''); setFile(null); setPercent(0); onClose();
+          return;
+        }
+
+        await axios.put(dRes.data.upload_url, file, {
+          headers: { 'Content-Type': 'application/octet-stream' },
+          onUploadProgress: (e) => setPercent(Math.round((e.loaded / e.total) * 100))
+        });
+
+        setPhase('merging');
+        const cRes = await axios.post('/api/v1/video/upload/direct/complete', {
+          upload_token: dRes.data.upload_token,
+          title
+        }, { headers: authHeaders() });
+        if (cRes.data.status_code !== 0) throw new Error(cRes.data.status_msg || '发布失败');
+
+        alert('发布成功！等待管理员审核');
+        setTitle(''); setFile(null); setPercent(0);
+        onClose();
+        return;
+      }
+
+      // 2b. 大文件：分片三步协议
       setPhase('uploading');
       setPercent(0);
       const progressKey = `upload:${md5}`;
