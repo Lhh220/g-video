@@ -119,10 +119,9 @@ func (s *UserService) GetUserInfo(ctx context.Context, req *user.UserInfoRequest
 		}
 	}
 
-	// 2. 查询数据库
-	var u model.User
-	// 根据请求中的 user_id 查找
-	if err := database.DB.First(&u, req.UserId).Error; err != nil {
+	// 2. 查询数据库 (singleflight 防击穿，与 Feed 内部取用户路径保持一致)
+	u, err := loadUserSF(req.UserId)
+	if err != nil {
 		return &user.UserInfoResponse{
 			StatusCode: 1,
 			StatusMsg:  "该用户不存在",

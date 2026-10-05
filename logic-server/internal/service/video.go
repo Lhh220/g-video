@@ -354,11 +354,13 @@ func (s *VideoService) FollowingFeed(ctx context.Context, req *video.FollowingFe
 	// 2. 在 videos 表中找到 author_id 在上述名单中的视频
 	// 3. 按时间倒序排列
 	fmt.Printf("DEBUG: 当前用户ID: %v\n", currentUserID)
+	// Limit 兜底：关注大 V 时防止一次拉回全量视频拖垮接口
 	err := database.DB.Table("videos").
 		Joins("JOIN follows ON follows.to_user_id = videos.author_id").
 		// status = 1 只展示审核通过的视频
 		Where("follows.user_id = ? AND videos.status = ?", currentUserID, 1).
 		Order("videos.created_at DESC").
+		Limit(50).
 		Find(&videos).Error
 
 	if err != nil {
