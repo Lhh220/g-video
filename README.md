@@ -134,6 +134,8 @@ go test ./... -run TestHotScore # 只跑单测 (不启动容器)
 
 集成测试基于 **testcontainers**：进程内自动拉起真实 MySQL/Redis 容器，OSS 用本地假服务器模拟（实现了分片上传协议的 XML 应答）。覆盖八条关键链路：审核可见性矩阵、注册角色安全、秒传与分片会话状态机、点赞计数写合并、热门池排序、登录限流、分布式锁、评论/审核幂等与分源统计。本机无 Docker 自动 skip，CI 强制执行。
 
+面试准备材料见 [docs/interview.md](docs/interview.md)（40 题技术点自问自答手册）。
+
 ## 项目结构
 
 ```
